@@ -12,10 +12,10 @@ export default defineConfig(() => {
       VitePWA({
         registerType: 'autoUpdate',
         manifest: {
-          name: 'Liburan Planner App',
-          short_name: 'Liburan',
-          description: 'A delightful trip planner!',
-          theme_color: '#FDFBFA',
+          name: 'Tripcore: Collaborative Trip Planner',
+          short_name: 'Tripcore',
+          description: 'A delightful group trip planner!',
+          theme_color: '#F472B6',
           background_color: '#FDFBFA',
           display: 'standalone',
           icons: [

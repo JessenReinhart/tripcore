@@ -243,6 +243,11 @@ export default function TripPage() {
             {activeTab === "checklist" && <ChecklistTab trip={trip} updateTrip={updateTrip} currentUser={currentUser} />}
           </motion.div>
         </AnimatePresence>
+        
+        <div className="mt-8 mb-4 text-center opacity-40 flex items-center justify-center gap-1.5 font-display font-bold text-ink">
+          <Map className="w-4 h-4 text-pastel-pink" />
+          tripcore
+        </div>
       </main>
 
       <NameSetupModal isOpen={isNameModalOpen} onJoin={handleNameJoin} />

@@ -1,4 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="100" fill="#fdfbfa"/>
-  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="250">🌴</text>
+  <rect width="512" height="512" rx="100" fill="#ffb6b9"/>
+  <!-- Simple stylized luggage / map pin or just bold text -->
+  <circle cx="256" cy="256" r="180" fill="#fdfbf7" />
+  <path d="M 256 120 C 180 120 120 180 120 256 C 120 350 256 420 256 420 C 256 420 392 350 392 256 C 392 180 332 120 256 120 Z" fill="#ffb6b9" />
+  <circle cx="256" cy="230" r="50" fill="#fdfbf7" />
 </svg>
