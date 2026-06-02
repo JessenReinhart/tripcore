@@ -3,6 +3,8 @@ export type Member = {
   name: string;
   hasPaidDeposit?: boolean; // legacy
   totalContributed: number;
+  firebaseUid?: string;
+  pinHash?: string;
 };
 
 export type ExpenseCategory = "Food" | "Transport" | "Lodging" | "Fun" | "Other";

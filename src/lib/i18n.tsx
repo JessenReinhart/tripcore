@@ -14,6 +14,17 @@ export const translations = {
     nameModalSubtitle: "What should we call you during this trip?",
     nameModalPlaceholder: "e.g. Andi, Jessen...",
     nameModalBtn: "Let's go!",
+    nameModalPinPlaceholder: "Create a 4-digit PIN",
+    nameModalPinHint: "You'll need this to reclaim your identity later",
+
+    // MemberPickerModal
+    memberPickerTitle: "Welcome Back!",
+    memberPickerSubtitle: "Who were you in this trip?",
+    memberPickerNew: "I'm new here",
+    memberPickerEnterPin: "Hi {name}, enter your PIN",
+    memberPickerWrongPin: "Wrong PIN, try again!",
+    memberPickerConfirm: "That's me!",
+    or: "or",
 
     // TripPage / Bottom Nav
     friendshipId: "Friendship ID:",
@@ -106,8 +117,17 @@ export const translations = {
     nameModalSubtitle: "Kita panggil kamu siapa nih di trip ini?",
     nameModalPlaceholder: "ex: Andi, Jessen...",
     nameModalBtn: "Gasss!",
+    nameModalPinPlaceholder: "Bikin PIN 4 digit",
+    nameModalPinHint: "Buat klaim ulang identitas kamu nanti",
 
-    // TripPage / Bottom Nav
+    // MemberPickerModal
+    memberPickerTitle: "Eh Balik Lagi!",
+    memberPickerSubtitle: "Kamu siapa nih sebelumnya?",
+    memberPickerNew: "Aku orang baru",
+    memberPickerEnterPin: "Hai {name}, masukin PIN kamu",
+    memberPickerWrongPin: "PIN-nya salah, coba lagi!",
+    memberPickerConfirm: "Iya ini aku!",
+    or: "atau",
     friendshipId: "Kode Trip:",
     shareTrip: "Ajak Teman",
     tripCopied: "Link dicopy!",

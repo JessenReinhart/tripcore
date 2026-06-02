@@ -1,70 +1,92 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Lock } from "lucide-react";
 import { useLanguage } from "../lib/i18n";
 
 type Props = {
   isOpen: boolean;
-  onJoin: (name: string) => void;
+  onJoin: (name: string, pin: string) => void;
 };
 
 export default function NameSetupModal({ isOpen, onJoin }: Props) {
   const { t } = useLanguage();
   const [name, setName] = useState("");
+  const [pin, setPin] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim()) {
-      onJoin(name.trim());
-    }
+    const trimmedName = name.trim();
+    const trimmedPin = pin.trim();
+    if (!trimmedName || !trimmedPin || trimmedPin.length < 4) return;
+    onJoin(trimmedName, trimmedPin);
+    setName("");
+    setPin("");
   };
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-ink/20 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="bg-white rounded-3xl p-8 shadow-2xl relative z-10 w-full max-w-sm border-4 border-pastel-cream"
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-ink/60 backdrop-blur-sm"
+        >
+          <motion.form
+            initial={{ scale: 0.8, y: 40, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            onSubmit={handleSubmit}
+            className="bg-white rounded-3xl p-8 shadow-2xl w-full max-w-sm border-4 border-pastel-cream flex flex-col gap-4"
           >
-            <div className="mx-auto w-16 h-16 bg-pastel-mint/30 rounded-full flex items-center justify-center mb-4">
-              <span className="text-3xl">🌸</span>
+            <div className="bg-pastel-yellow/30 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2">
+              <Sparkles className="text-pastel-pink w-8 h-8" />
             </div>
-            <h2 className="font-display font-bold text-2xl text-center text-ink mb-2">
-              {t('nameModalTitle')}
+            <h2 className="font-display font-bold text-2xl text-center text-ink">
+              {t("nameModalTitle")}
             </h2>
-            <p className="text-center font-sans text-ink-light mb-6">
-              {t('nameModalSubtitle')}
+            <p className="text-ink-light text-center font-sans text-sm -mt-2">
+              {t("nameModalSubtitle")}
             </p>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+
+            <input
+              type="text"
+              placeholder={t("nameModalPlaceholder")}
+              className="w-full bg-pastel-cream border-none px-4 py-3 rounded-xl font-sans text-base focus:ring-2 focus:ring-pastel-pink/50 outline-none"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+              required
+            />
+
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-light" />
               <input
-                type="text"
-                autoFocus
-                placeholder={t('nameModalPlaceholder')}
-                className="bg-pastel-cream font-sans border-none px-6 py-4 rounded-2xl text-ink font-medium focus:ring-4 focus:ring-pastel-pink/30 outline-none w-full shadow-inner"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                type="password"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder={t("nameModalPinPlaceholder")}
+                className="w-full bg-pastel-cream border-none pl-11 pr-4 py-3 rounded-xl font-mono text-base tracking-widest focus:ring-2 focus:ring-pastel-pink/50 outline-none"
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                required
               />
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                type="submit"
-                disabled={!name.trim()}
-                className="bg-pastel-pink text-white font-display font-bold py-4 rounded-2xl disabled:opacity-50 flex justify-center items-center gap-2"
-              >
-                {t('nameModalBtn')} <Sparkles className="w-5 h-5" />
-              </motion.button>
-            </form>
-          </motion.div>
-        </div>
+            </div>
+
+            <p className="text-[10px] text-ink-light text-center -mt-2 font-sans">
+              {t("nameModalPinHint")}
+            </p>
+
+            <button
+              type="submit"
+              disabled={!name.trim() || pin.trim().length < 4}
+              className="mt-2 w-full bg-pastel-pink text-white font-display font-bold py-4 rounded-2xl shadow-lg shadow-pastel-pink/30 hover:shadow-pastel-pink/50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {t("nameModalBtn")}
+            </button>
+          </motion.form>
+        </motion.div>
       )}
     </AnimatePresence>
   );

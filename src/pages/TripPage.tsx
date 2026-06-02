@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Map, Receipt, Calendar, CheckSquare, Pencil, Globe, UserPlus, Check, Download } from "lucide-react";
 import { Trip, Member } from "../types";
 import NameSetupModal from "../components/NameSetupModal";
+import MemberPickerModal from "../components/MemberPickerModal";
 import OnboardingModal from "../components/OnboardingModal";
 import DashboardTab from "../components/tabs/DashboardTab";
 import ExpensesTab from "../components/tabs/ExpensesTab";
@@ -12,6 +13,8 @@ import ChecklistTab from "../components/tabs/ChecklistTab";
 import { cn } from "../lib/utils";
 import { triggerCelebration } from "../lib/confetti";
 import { useLanguage } from "../lib/i18n";
+import { ensureAuth, subscribeToTrip, saveTrip } from "../lib/firebase";
+import { hashPin } from "../lib/crypto";
 
 type TabId = "dashboard" | "split" | "itinerary" | "checklist";
 
@@ -19,8 +22,10 @@ export default function TripPage() {
   const { tripId } = useParams<{ tripId: string }>();
   const [trip, setTrip] = useState<Trip | null>(null);
   const [currentUser, setCurrentUser] = useState<Member | null>(null);
+  const [firebaseUid, setFirebaseUid] = useState<string | null>(null);
   
   const [isNameModalOpen, setIsNameModalOpen] = useState(false);
+  const [isMemberPickerOpen, setIsMemberPickerOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
@@ -78,72 +83,110 @@ export default function TripPage() {
 
   useEffect(() => {
     if (!tripId) return;
-    const storedTrip = localStorage.getItem(`trip_${tripId}`);
-    if (storedTrip) {
-      const parsedTrip: Trip = JSON.parse(storedTrip);
-      // Migrate old schema to new schema
-      if (parsedTrip.savingTargetPerMember === undefined) {
-        parsedTrip.savingTargetPerMember = 1000000;
-      }
-      parsedTrip.members = parsedTrip.members.map((m) => ({
-        ...m,
-        totalContributed: m.totalContributed || 0,
-      }));
-      setTrip(parsedTrip);
-    } else {
-      const newTrip: Trip = {
-        id: tripId,
-        title: t('defaultTripTitle'),
-        savingTargetPerMember: 1000000, // Default 1M target
-        members: [],
-        expenses: [],
-        itinerary: [
-          { id: crypto.randomUUID(), dateLabel: t('dayLabel', { number: 1 }), activities: [] }
-        ],
-        checklist: [],
-        createdAt: Date.now(),
-      };
-      setTrip(newTrip);
-      localStorage.setItem(`trip_${tripId}`, JSON.stringify(newTrip));
-    }
-    const storedUserId = localStorage.getItem(`trip_user_${tripId}`);
-    if (!storedUserId) {
-      setIsNameModalOpen(true);
-    }
+
+    let unsubscribe: (() => void) | undefined;
+
+    ensureAuth().then((uid) => {
+      setFirebaseUid(uid);
+
+      unsubscribe = subscribeToTrip(tripId, (remoteTrip) => {
+        if (remoteTrip) {
+          // Migrate old schema to new schema
+          const migrated = { ...remoteTrip };
+          if (migrated.savingTargetPerMember === undefined) {
+            migrated.savingTargetPerMember = 1000000;
+          }
+          migrated.members = migrated.members.map((m) => ({
+            ...m,
+            totalContributed: m.totalContributed || 0,
+          }));
+          setTrip(migrated);
+        } else {
+          // First visit — seed the trip document
+          const newTrip: Trip = {
+            id: tripId,
+            title: t('defaultTripTitle'),
+            savingTargetPerMember: 1000000,
+            members: [],
+            expenses: [],
+            itinerary: [
+              { id: crypto.randomUUID(), dateLabel: t('dayLabel', { number: 1 }), activities: [] }
+            ],
+            checklist: [],
+            createdAt: Date.now(),
+          };
+          saveTrip(tripId, newTrip);
+          // onSnapshot will fire with the new trip — no need to setTrip here
+        }
+      });
+
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
   }, [tripId]);
 
   useEffect(() => {
-    if (trip) {
-      localStorage.setItem(`trip_${trip.id}`, JSON.stringify(trip));
+    if (trip && firebaseUid) {
+      // 1) Try localStorage member ID first
       const storedUserId = localStorage.getItem(`trip_user_${trip.id}`);
       if (storedUserId) {
         const member = trip.members.find(m => m.id === storedUserId);
-        if (member) setCurrentUser(member);
+        if (member) {
+          setCurrentUser(member);
+          return;
+        }
+      }
+      // 2) Fallback: match by Firebase UID (handles localStorage clear / new device)
+      const memberByUid = trip.members.find(m => m.firebaseUid === firebaseUid);
+      if (memberByUid) {
+        localStorage.setItem(`trip_user_${trip.id}`, memberByUid.id);
+        setCurrentUser(memberByUid);
+        return;
+      }
+      // 3) No identity found — show picker if members exist, otherwise ask for name
+      if (trip.members.length > 0) {
+        setIsMemberPickerOpen(true);
+      } else {
+        setIsNameModalOpen(true);
       }
     }
-  }, [trip]);
+  }, [trip, firebaseUid]);
 
-  useEffect(() => {
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === `trip_${tripId}` && e.newValue) {
-        setTrip(JSON.parse(e.newValue));
-      }
+  const handleNameJoin = async (name: string, pin: string) => {
+    if (!trip || !tripId) return;
+    const pinHashStr = await hashPin(pin);
+    const newMember: Member = {
+      id: crypto.randomUUID(),
+      name,
+      totalContributed: 0,
+      firebaseUid: firebaseUid ?? undefined,
+      pinHash: pinHashStr,
     };
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, [tripId]);
-
-  const handleNameJoin = (name: string) => {
-    if (!trip) return;
-    const newMember: Member = { id: crypto.randomUUID(), name, totalContributed: 0 };
     localStorage.setItem(`trip_user_${tripId}`, newMember.id);
-    setTrip({ ...trip, members: [...trip.members, newMember] });
+    const updatedTrip = { ...trip, members: [...trip.members, newMember] };
+    saveTrip(tripId, updatedTrip);
     setIsNameModalOpen(false);
-    
-    // Open the onboarding tutorial right after Name Setup
+
     setTimeout(() => {
       setIsOnboardingOpen(true);
-    }, 400); // slight delay to let Name modal exit smoothly
+    }, 400);
+  };
+
+  const handleReclaimMember = (member: Member) => {
+    if (!trip || !tripId || !firebaseUid) return;
+    const updatedMembers = trip.members.map((m) =>
+      m.id === member.id ? { ...m, firebaseUid } : m
+    );
+    localStorage.setItem(`trip_user_${tripId}`, member.id);
+    saveTrip(tripId, { ...trip, members: updatedMembers });
+    setIsMemberPickerOpen(false);
+  };
+
+  const handleNewMemberFromPicker = () => {
+    setIsMemberPickerOpen(false);
+    setIsNameModalOpen(true);
   };
 
   const handleOnboardingComplete = () => {
@@ -151,7 +194,10 @@ export default function TripPage() {
     triggerCelebration();
   };
 
-  const updateTrip = (updatedTrip: Trip) => setTrip(updatedTrip);
+  const updateTrip = (updatedTrip: Trip) => {
+    if (!tripId) return;
+    saveTrip(tripId, updatedTrip);
+  };
 
   const handleSaveTitle = () => {
     if (trip && titleInput.trim() && titleInput !== trip.title) {
@@ -251,6 +297,12 @@ export default function TripPage() {
       </main>
 
       <NameSetupModal isOpen={isNameModalOpen} onJoin={handleNameJoin} />
+      <MemberPickerModal
+        isOpen={isMemberPickerOpen}
+        members={trip.members}
+        onReclaim={handleReclaimMember}
+        onNewMember={handleNewMemberFromPicker}
+      />
       <OnboardingModal 
         isOpen={isOnboardingOpen} 
         onComplete={handleOnboardingComplete} 

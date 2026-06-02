@@ -1,60 +1,91 @@
-# 🌴 Trip Planner App
+# 🌴 Tripcore
 
-A delightful, mobile-first web application designed to help friends and groups plan trips, track expenses, and manage itineraries collaboratively. Built with **React**, **Vite**, **TypeScript**, and **Tailwind CSS**.
+A delightful, mobile-first group trip planner PWA. Split bills, plan itineraries, and pack together — no accounts, just a shareable link. Built with **React 19**, **Vite**, **TypeScript**, **Tailwind CSS v4**, and **Firebase Firestore**.
 
 ## ✨ Features
 
-- **📊 Dashboard (Kas):** Get a bird's-eye view of your trip's finances. Track total pooled money, view total spending, and automatically calculate who owes what to whom.
-- **🧾 Split Bills:** Easily log group expenses and optionally attach photo receipts.
-- **📅 Itinerary Guide:** A beautiful day-by-day timeline to plan out your activities, flights, and reservations.
-- **✅ Group Checklist:** Make sure nobody forgets the essentials with a shared packing and to-do list.
-- **🌏 Bilingual Support:** Seamlessly toggle between English and Indonesian (ID) directly in the UI.
-- **💾 Local-First Storage:** No account required. All trip data is automatically persisted to your browser's local storage.
-- **✨ Polished "Vibe" UI:** Fluid animations using Motion (Framer Motion) and a playful, clean pastel design system.
+- **📊 Dashboard (Kas):** Bird's-eye view of trip finances. Track pooled funds, total spending, and auto-calculated "who owes whom" settlement.
+- **🧾 Split Bills:** Log group expenses with categories, paid-by, and split-between members. Automatic debt settlement algorithm.
+- **📅 Itinerary Guide:** Day-by-day timeline with time-sorted activities. Add/remove days and plans.
+- **✅ Group Checklist:** Shared packing and to-do list. Mark items complete, see who packed what, clear done items.
+- **🌏 Bilingual:** Toggle between English and Indonesian (EN/ID) — persistent preference.
+- **🔐 PIN Identity:** Set a 4-digit PIN on first join. Reclaim your identity on new devices or after clearing data.
+- **☁️ Real-Time Sync:** Firebase Firestore with offline persistence. All members see changes live across devices.
+- **📱 PWA:** Installable on mobile/home screen. Works offline via Firestore IndexedDB cache.
+- **✨ Polished UI:** Pastel design system, fluid Motion animations, confetti celebrations.
 
 ## 🛠️ Tech Stack
 
-- **Framework:** [React 18](https://react.dev/) + [Vite](https://vitejs.dev/)
-- **Language:** [TypeScript](https://www.typescriptlang.org/)
-- **Styling:** [Tailwind CSS v4](https://tailwindcss.com/)
-- **Animations:** [Motion (Framer Motion)](https://motion.dev/)
-- **Icons:** [Lucide React](https://lucide.dev/)
-- **State Management:** React Hooks + `localStorage`
+- **Framework:** React 19 + Vite 6
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS v4 (custom pastel theme)
+- **Backend:** Firebase Firestore + Anonymous Auth
+- **Animations:** Motion (Framer Motion)
+- **Icons:** Lucide React
+- **PWA:** vite-plugin-pwa (auto-update service worker)
 
 ## 🚀 Getting Started
 
-To run this project locally on your machine:
-
-1. **Clone the repository**
+1. **Clone and install**
    ```bash
    git clone <repository-url>
-   cd trip-planner
-   ```
-
-2. **Install dependencies**
-   ```bash
+   cd tripcore
    npm install
    ```
 
-3. **Start the development server**
+2. **Set up Firebase**
+   - Create a project at [Firebase Console](https://console.firebase.google.com)
+   - Enable **Anonymous Authentication** (Authentication → Sign-in method)
+   - Create a **Cloud Firestore** database (start in test mode)
+   - Copy your config and replace the object in `src/lib/firebase.ts`
+
+3. **Start the dev server**
    ```bash
-   npm run dev
+   npm run dev        # → http://localhost:3000
    ```
 
 4. **Build for production**
    ```bash
-   npm run build
+   npm run build      # → dist/
+   npm run preview    # Preview production build
    ```
 
-## 📝 Roadmap & Ideas for Expansion
+## 📁 Project Structure
 
-Currently, the app uses a **Local-First** approach where trip data is tied to the unique Trip Code in the URL and stored in your browser's local storage. 
+```
+src/
+├── main.tsx              # Entry: BrowserRouter + LanguageProvider + PWA
+├── App.tsx               # Routes: / and /trip/:tripId
+├── types.ts              # Trip, Member, Expense, ItineraryDay, ChecklistItem
+├── index.css             # Tailwind v4 + pastel theme tokens
+├── lib/
+│   ├── firebase.ts       # Firebase init, anonymous auth, Firestore helpers
+│   ├── i18n.tsx          # LanguageProvider + translations (EN/ID)
+│   ├── crypto.ts         # SHA-256 PIN hashing
+│   ├── confetti.ts       # canvas-confetti helpers
+│   └── utils.ts          # cn() — clsx + tailwind-merge
+├── pages/
+│   ├── LandingPage.tsx   # Create new trip → generates UUID
+│   └── TripPage.tsx      # Main shell: header, tabs, bottom nav, modals
+└── components/
+    ├── NameSetupModal.tsx      # First-join: name + PIN
+    ├── MemberPickerModal.tsx   # Reclaim existing identity via PIN
+    ├── OnboardingModal.tsx     # 4-step feature intro carousel
+    └── tabs/
+        ├── DashboardTab.tsx    # Treasury, savings goal, deposits
+        ├── ExpensesTab.tsx     # Add/view expenses, settlements
+        ├── ItineraryTab.tsx    # Day-by-day timeline
+        └── ChecklistTab.tsx    # Shared to-do/packing list
+```
 
-If you want to make it truly collaborative over the internet, you could scale it by:
-- Integrating a real-time database like Firebase Firestore or Supabase.
-- Implementing WebSockets to sync state changes live between members joining the same trip code.
-- Adding a cloud bucket (like AWS S3) for persistent receipt photo uploads.
+## 🔄 Data Flow
+
+1. **LandingPage** generates a `crypto.randomUUID()` trip ID, navigates to `/trip/:tripId`.
+2. **TripPage** authenticates anonymously via Firebase, subscribes to `trips/{tripId}` in Firestore via `onSnapshot`.
+3. All state lives in a single `Trip` object. Mutations write through to Firestore; the snapshot listener pushes updates to all connected clients.
+4. Current user identity: member UUID stored in `localStorage`, matched by Firebase UID or reclaimed via PIN.
+5. Offline: Firestore IndexedDB persistence handles disconnected usage; syncs on reconnect.
 
 ## 📄 License
 
-This project is open-source and available under the [MIT License](LICENSE).
+MIT
