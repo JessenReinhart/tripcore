@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Map, Receipt, Calendar, CheckSquare, Pencil, Globe, UserPlus, Check } from "lucide-react";
+import { Map, Receipt, Calendar, CheckSquare, Pencil, Globe, UserPlus, Check, Download } from "lucide-react";
 import { Trip, Member } from "../types";
 import NameSetupModal from "../components/NameSetupModal";
 import OnboardingModal from "../components/OnboardingModal";
@@ -28,8 +28,35 @@ export default function TripPage() {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState("");
   const [isCopied, setIsCopied] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   const { t, lang, setLang } = useLanguage();
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    // Show the install prompt
+    deferredPrompt.prompt();
+    // Wait for the user to respond to the prompt
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
 
   const handleShare = async () => {
     try {
@@ -142,7 +169,16 @@ export default function TripPage() {
   return (
     <div className="w-full max-w-lg mx-auto min-h-screen pb-28 relative overflow-hidden bg-pastel-cream">
       <header className="p-6 pb-2 pt-6 flex flex-col gap-4">
-        <div className="flex justify-end gap-2 w-full">
+        <div className="flex justify-end gap-2 w-full flex-wrap">
+          {deferredPrompt && (
+            <button 
+              onClick={handleInstallClick}
+              className="bg-white/50 backdrop-blur-md border border-pastel-yellow/30 px-2.5 py-1.5 rounded-xl flex items-center shadow-sm font-sans font-bold text-[10px] text-ink transition-colors h-8"
+            >
+              <Download className="w-3.5 h-3.5 mr-1 text-pastel-pink" />
+              <span>{t('installApp')}</span>
+            </button>
+          )}
           <button 
             onClick={toggleLanguage}
             className="bg-white/50 backdrop-blur-md border border-pastel-yellow/30 px-2.5 py-1.5 rounded-xl flex items-center shadow-sm font-sans font-bold text-[10px] text-ink-light hover:text-ink transition-colors h-8"
