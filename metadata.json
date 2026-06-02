@@ -1,0 +1,6 @@
+{
+  "name": "Tripcore",
+  "description": "A cute, friendly, no-login group trip planner and bill splitter.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
