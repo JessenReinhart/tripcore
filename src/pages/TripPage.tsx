@@ -1,5 +1,5 @@
-import { useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { useParams, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Map, Receipt, Calendar, CheckSquare, Pencil, Globe, UserPlus, Check, Download } from "lucide-react";
 import { Trip, Member } from "../types";
@@ -13,13 +13,17 @@ import ChecklistTab from "../components/tabs/ChecklistTab";
 import { cn } from "../lib/utils";
 import { triggerCelebration } from "../lib/confetti";
 import { useLanguage } from "../lib/i18n";
-import { ensureAuth, subscribeToTrip, saveTrip } from "../lib/firebase";
+import { ensureAuth, subscribeToTrip, saveTrip, resolveSlug } from "../lib/firebase";
 import { hashPin } from "../lib/crypto";
 
 type TabId = "dashboard" | "split" | "itinerary" | "checklist";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default function TripPage() {
   const { tripId } = useParams<{ tripId: string }>();
+  const location = useLocation();
+  const [resolvedTripId, setResolvedTripId] = useState<string | null>(null);
   const [trip, setTrip] = useState<Trip | null>(null);
   const [currentUser, setCurrentUser] = useState<Member | null>(null);
   const [firebaseUid, setFirebaseUid] = useState<string | null>(null);
@@ -63,16 +67,20 @@ export default function TripPage() {
     }
   };
 
+  const shareUrl = trip?.slug
+    ? `${window.location.origin}/trip/${trip.slug}`
+    : window.location.href;
+
   const handleShare = async () => {
     try {
       if (navigator.share) {
         await navigator.share({
           title: trip?.title || t('defaultTripName'),
           text: `${t('joinOurTrip')} ${trip?.title}`,
-          url: window.location.href,
+          url: shareUrl,
         });
       } else {
-        await navigator.clipboard.writeText(window.location.href);
+        await navigator.clipboard.writeText(shareUrl);
         setIsCopied(true);
         setTimeout(() => setIsCopied(false), 2000);
       }
@@ -84,12 +92,32 @@ export default function TripPage() {
   useEffect(() => {
     if (!tripId) return;
 
+    // If it looks like a UUID, use directly. Otherwise resolve as slug.
+    if (UUID_RE.test(tripId)) {
+      setResolvedTripId(tripId);
+    } else {
+      resolveSlug(tripId).then((id) => {
+        if (id) {
+          setResolvedTripId(id);
+        } else {
+          // Slug not found — treat as new trip with slug from navigation state
+          const state = location.state as { tripId?: string; slug?: string } | null;
+          const realId = state?.tripId || crypto.randomUUID();
+          setResolvedTripId(realId);
+        }
+      });
+    }
+  }, [tripId]);
+
+  useEffect(() => {
+    if (!resolvedTripId) return;
+
     let unsubscribe: (() => void) | undefined;
 
     ensureAuth().then((uid) => {
       setFirebaseUid(uid);
 
-      unsubscribe = subscribeToTrip(tripId, (remoteTrip) => {
+      unsubscribe = subscribeToTrip(resolvedTripId, (remoteTrip) => {
         if (remoteTrip) {
           // Migrate old schema to new schema
           const migrated = { ...remoteTrip };
@@ -103,9 +131,11 @@ export default function TripPage() {
           setTrip(migrated);
         } else {
           // First visit — seed the trip document
+          const state = location.state as { tripId?: string; slug?: string } | null;
           const newTrip: Trip = {
-            id: tripId,
+            id: resolvedTripId,
             title: t('defaultTripTitle'),
+            slug: state?.slug || tripId,
             savingTargetPerMember: 1000000,
             members: [],
             expenses: [],
@@ -115,7 +145,7 @@ export default function TripPage() {
             checklist: [],
             createdAt: Date.now(),
           };
-          saveTrip(tripId, newTrip);
+          saveTrip(resolvedTripId, newTrip);
           // onSnapshot will fire with the new trip — no need to setTrip here
         }
       });
@@ -125,7 +155,7 @@ export default function TripPage() {
     return () => {
       unsubscribe?.();
     };
-  }, [tripId]);
+  }, [resolvedTripId]);
 
   useEffect(() => {
     if (trip && firebaseUid) {
@@ -155,7 +185,7 @@ export default function TripPage() {
   }, [trip, firebaseUid]);
 
   const handleNameJoin = async (name: string, pin: string) => {
-    if (!trip || !tripId) return;
+    if (!trip || !resolvedTripId) return;
     const pinHashStr = await hashPin(pin);
     const newMember: Member = {
       id: crypto.randomUUID(),
@@ -164,9 +194,9 @@ export default function TripPage() {
       firebaseUid: firebaseUid ?? undefined,
       pinHash: pinHashStr,
     };
-    localStorage.setItem(`trip_user_${tripId}`, newMember.id);
+    localStorage.setItem(`trip_user_${resolvedTripId}`, newMember.id);
     const updatedTrip = { ...trip, members: [...trip.members, newMember] };
-    saveTrip(tripId, updatedTrip);
+    saveTrip(resolvedTripId, updatedTrip);
     setIsNameModalOpen(false);
 
     setTimeout(() => {
@@ -175,12 +205,12 @@ export default function TripPage() {
   };
 
   const handleReclaimMember = (member: Member) => {
-    if (!trip || !tripId || !firebaseUid) return;
+    if (!trip || !resolvedTripId || !firebaseUid) return;
     const updatedMembers = trip.members.map((m) =>
       m.id === member.id ? { ...m, firebaseUid } : m
     );
-    localStorage.setItem(`trip_user_${tripId}`, member.id);
-    saveTrip(tripId, { ...trip, members: updatedMembers });
+    localStorage.setItem(`trip_user_${resolvedTripId}`, member.id);
+    saveTrip(resolvedTripId, { ...trip, members: updatedMembers });
     setIsMemberPickerOpen(false);
   };
 
@@ -195,8 +225,8 @@ export default function TripPage() {
   };
 
   const updateTrip = (updatedTrip: Trip) => {
-    if (!tripId) return;
-    saveTrip(tripId, updatedTrip);
+    if (!resolvedTripId) return;
+    saveTrip(resolvedTripId, updatedTrip);
   };
 
   const handleSaveTitle = () => {
@@ -269,7 +299,10 @@ export default function TripPage() {
             </div>
           )}
           <p className="text-ink-light font-sans text-sm font-medium">
-            {t('friendshipId')} <span className="font-mono text-xs opacity-70 bg-ink-light/10 px-2 py-0.5 rounded-full">{tripId?.substring(0,8)}</span>
+            {t('friendshipId')}{" "}
+            <span className="font-mono text-xs opacity-70 bg-ink-light/10 px-2 py-0.5 rounded-full select-all">
+              {trip.slug || trip.id.substring(0, 8)}
+            </span>
           </p>
         </div>
       </header>

@@ -42,6 +42,7 @@ export type ChecklistItem = {
 export type Trip = {
   id: string;
   title: string;
+  slug?: string;
   savingTargetPerMember: number;
   members: Member[];
   expenses: Expense[];

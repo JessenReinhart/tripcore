@@ -8,6 +8,10 @@ export const translations = {
     landingTitle: "tripcore",
     landingSubtitle: "Split bills, plan itineraries, and pack together with your besties. No login required! 🌸",
     createTripBtn: "Create New Trip",
+    slugPlaceholder: "Custom link (optional)",
+    slugHint: "Leave empty for auto-generated. Use letters, numbers, and hyphens.",
+    slugInvalid: "Use 4–30 chars: letters, numbers, hyphens only.",
+    slugTaken: "This link is already taken — try another!",
 
     // NameSetupModal
     nameModalTitle: "Hi Friend!",
@@ -111,6 +115,10 @@ export const translations = {
     landingTitle: "tripcore",
     landingSubtitle: "Patungan, bikin itinerary, & packing bareng bestie. Tinggal sat-set, no login! 🌸",
     createTripBtn: "Bikin Trip Baru",
+    slugPlaceholder: "Link custom (optional)",
+    slugHint: "Kosongin buat auto-generate. Pake huruf, angka, sama strip.",
+    slugInvalid: "Pake 4–30 karakter: huruf, angka, sama strip aja.",
+    slugTaken: "Link ini udah dipake — coba yang lain!",
 
     // NameSetupModal
     nameModalTitle: "Hai Bestie!",

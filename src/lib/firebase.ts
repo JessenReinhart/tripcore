@@ -6,6 +6,11 @@ import {
   setDoc,
   onSnapshot,
   enableIndexedDbPersistence,
+  collection,
+  query,
+  where,
+  getDocs,
+  limit,
 } from 'firebase/firestore';
 import type { Trip } from '../types';
 
@@ -73,4 +78,26 @@ export function subscribeToTrip(
 export async function saveTrip(tripId: string, trip: Trip): Promise<void> {
   const tripRef = doc(db, 'trips', tripId);
   await setDoc(tripRef, trip, { merge: true });
+}
+
+/** Check if a slug is already taken by another trip. */
+export async function checkSlugAvailable(slug: string, excludeTripId?: string): Promise<boolean> {
+  const q = query(collection(db, 'trips'), where('slug', '==', slug), limit(1));
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return true;
+  if (excludeTripId) {
+    return snapshot.docs[0].id === excludeTripId;
+  }
+  return false;
+}
+
+/**
+ * Resolve a short slug to the real trip UUID.
+ * Returns the trip ID if found, null otherwise.
+ */
+export async function resolveSlug(slug: string): Promise<string | null> {
+  const q = query(collection(db, 'trips'), where('slug', '==', slug), limit(1));
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return null;
+  return snapshot.docs[0].id;
 }
