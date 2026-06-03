@@ -12,6 +12,12 @@ export const translations = {
     slugHint: "Leave empty for auto-generated. Use letters, numbers, and hyphens.",
     slugInvalid: "Use 4–30 chars: letters, numbers, hyphens only.",
     slugTaken: "This link is already taken — try another!",
+    slugNotFound: "No trip found with that link. Double-check and try again!",
+    joinTripBtn: "Join Trip",
+    joinSlugPlaceholder: "Enter trip link or code...",
+    tabCreate: "Create",
+    tabJoin: "Join",
+    orDivider: "or",
 
     // NameSetupModal
     nameModalTitle: "Hi Friend!",
@@ -119,6 +125,12 @@ export const translations = {
     slugHint: "Kosongin buat auto-generate. Pake huruf, angka, sama strip.",
     slugInvalid: "Pake 4–30 karakter: huruf, angka, sama strip aja.",
     slugTaken: "Link ini udah dipake — coba yang lain!",
+    slugNotFound: "Ga ada trip dengan link itu. Cek lagi ya!",
+    joinTripBtn: "Join Trip",
+    joinSlugPlaceholder: "Masukin link atau kode trip...",
+    tabCreate: "Bikin",
+    tabJoin: "Join",
+    orDivider: "atau",
 
     // NameSetupModal
     nameModalTitle: "Hai Bestie!",

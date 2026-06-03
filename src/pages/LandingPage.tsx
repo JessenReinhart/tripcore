@@ -1,48 +1,90 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { Sparkles, Map, Globe, Link, Loader2 } from "lucide-react";
-import { motion } from "motion/react";
+import { Sparkles, Map, Globe, Link, Loader2, LogIn } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { useLanguage } from "../lib/i18n";
 import { cn } from "../lib/utils";
-import { checkSlugAvailable } from "../lib/firebase";
+import { checkSlugAvailable, resolveSlug } from "../lib/firebase";
+
+type Mode = "create" | "join";
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const { t, lang, setLang } = useLanguage();
-  const [customSlug, setCustomSlug] = useState("");
-  const [slugError, setSlugError] = useState("");
-  const [checking, setChecking] = useState(false);
+  const [mode, setMode] = useState<Mode>("create");
+  const [slug, setSlug] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const slugIsValid = (s: string) => /^[a-z0-9][a-z0-9-]{2,28}[a-z0-9]$/.test(s);
 
   const handleCreateTrip = async () => {
     const tripId = crypto.randomUUID();
-    const slug = customSlug.trim().toLowerCase();
+    const customSlug = slug.trim().toLowerCase();
 
-    if (!slug) {
+    if (!customSlug) {
       navigate(`/trip/${tripId}`);
       return;
     }
 
-    if (!slugIsValid(slug)) {
-      setSlugError(t("slugInvalid"));
+    if (!slugIsValid(customSlug)) {
+      setError(t("slugInvalid"));
       return;
     }
 
-    setChecking(true);
-    const available = await checkSlugAvailable(slug);
-    setChecking(false);
+    setLoading(true);
+    const available = await checkSlugAvailable(customSlug);
+    setLoading(false);
 
     if (!available) {
-      setSlugError(t("slugTaken"));
+      setError(t("slugTaken"));
       return;
     }
 
-    // Navigate with the slug and tripId in state so TripPage can set the slug
-    navigate(`/trip/${slug}`, { state: { tripId, slug } });
+    navigate(`/trip/${customSlug}`, { state: { tripId, slug: customSlug } });
+  };
+
+  const handleJoinTrip = async () => {
+    const input = slug.trim().toLowerCase();
+    if (!input) return;
+
+    setLoading(true);
+    setError("");
+
+    // If it looks like a UUID, navigate directly
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input)) {
+      setLoading(false);
+      navigate(`/trip/${input}`);
+      return;
+    }
+
+    const resolvedId = await resolveSlug(input);
+    setLoading(false);
+
+    if (!resolvedId) {
+      setError(t("slugNotFound"));
+      return;
+    }
+
+    navigate(`/trip/${input}`);
+  };
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (mode === "create") {
+      handleCreateTrip();
+    } else {
+      handleJoinTrip();
+    }
   };
 
   const toggleLanguage = () => setLang(lang === "en" ? "id" : "en");
+
+  const switchMode = (newMode: Mode) => {
+    setMode(newMode);
+    setSlug("");
+    setError("");
+  };
 
   return (
     <div className="flex flex-col items-center justify-center flex-1 w-full p-6 text-center max-w-md mx-auto relative">
@@ -72,45 +114,95 @@ export default function LandingPage() {
           {t("landingSubtitle")}
         </p>
 
-        <div className="flex flex-col gap-3 mb-6">
-          <div className="relative">
-            <Link className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-light" />
-            <input
-              type="text"
-              placeholder={t("slugPlaceholder")}
-              className="w-full bg-pastel-cream border-none pl-11 pr-4 py-3 rounded-xl font-mono text-sm focus:ring-2 focus:ring-pastel-pink/50 outline-none text-ink"
-              value={customSlug}
-              onChange={(e) => {
-                setCustomSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
-                setSlugError("");
-              }}
-              maxLength={30}
-            />
-          </div>
-          {slugError && (
-            <p className="text-pastel-pink text-xs font-sans font-bold -mt-1 text-left px-1">
-              {slugError}
-            </p>
-          )}
-          <p className="text-[10px] text-ink-light font-sans -mt-1 px-1 text-left">
-            {t("slugHint")}
-          </p>
+        {/* Mode toggle */}
+        <div className="flex bg-pastel-cream rounded-xl p-1 mb-5">
+          {(["create", "join"] as Mode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => switchMode(m)}
+              className={cn(
+                "flex-1 py-2.5 rounded-lg font-sans font-bold text-sm transition-all relative",
+                mode === m
+                  ? "bg-white text-pastel-pink shadow-sm"
+                  : "text-ink-light hover:text-ink"
+              )}
+            >
+              {m === "create" && (
+                <Sparkles className="w-4 h-4 inline mr-1.5 -mt-0.5" />
+              )}
+              {m === "join" && (
+                <LogIn className="w-4 h-4 inline mr-1.5 -mt-0.5" />
+              )}
+              {m === "create" ? t("tabCreate") : t("tabJoin")}
+            </button>
+          ))}
         </div>
 
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleCreateTrip}
-          disabled={checking}
-          className="bg-pastel-pink text-white font-bold font-display text-xl px-8 py-4 rounded-2xl w-full flex items-center justify-center gap-2 shadow-lg shadow-pastel-pink/30 hover:shadow-pastel-pink/50 transition-shadow disabled:opacity-70"
-        >
-          {checking ? (
-            <Loader2 className="w-6 h-6 animate-spin" />
-          ) : (
-            <Sparkles className="w-6 h-6" />
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={mode}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="relative">
+                <Link className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-light" />
+                <input
+                  type="text"
+                  placeholder={
+                    mode === "create"
+                      ? t("slugPlaceholder")
+                      : t("joinSlugPlaceholder")
+                  }
+                  className="w-full bg-pastel-cream border-none pl-11 pr-4 py-3 rounded-xl font-mono text-sm focus:ring-2 focus:ring-pastel-pink/50 outline-none text-ink"
+                  value={slug}
+                  onChange={(e) => {
+                    setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
+                    setError("");
+                  }}
+                  maxLength={40}
+                  autoComplete="off"
+                />
+              </div>
+            </motion.div>
+          </AnimatePresence>
+
+          {error && (
+            <p className="text-pastel-pink text-xs font-sans font-bold -mt-1 text-left px-1">
+              {error}
+            </p>
           )}
-          {t("createTripBtn")}
-        </motion.button>
+
+          {mode === "create" && (
+            <p className="text-[10px] text-ink-light font-sans -mt-1 px-1 text-left">
+              {t("slugHint")}
+            </p>
+          )}
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            type="submit"
+            disabled={loading}
+            className={cn(
+              "text-white font-bold font-display text-xl px-8 py-4 rounded-2xl w-full flex items-center justify-center gap-2 shadow-lg transition-shadow disabled:opacity-70",
+              mode === "create"
+                ? "bg-pastel-pink shadow-pastel-pink/30 hover:shadow-pastel-pink/50"
+                : "bg-pastel-purple shadow-pastel-purple/30 hover:shadow-pastel-purple/50"
+            )}
+          >
+            {loading ? (
+              <Loader2 className="w-6 h-6 animate-spin" />
+            ) : mode === "create" ? (
+              <Sparkles className="w-6 h-6" />
+            ) : (
+              <LogIn className="w-6 h-6" />
+            )}
+            {mode === "create" ? t("createTripBtn") : t("joinTripBtn")}
+          </motion.button>
+        </form>
       </motion.div>
     </div>
   );
