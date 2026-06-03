@@ -16,7 +16,7 @@ service cloud.firestore {
       }
 
       allow create: if request.auth != null;
-      allow read: if resource.data.memberUids == null || isMember();
+      allow read: if request.auth != null;
       allow update: if resource.data.memberUids == null || (isMember() && willBeMember());
       allow delete: if false;
     }
