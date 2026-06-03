@@ -1,23 +1,23 @@
 import { useState, type FormEvent } from "react";
-import { Sparkles, Map, Globe, Link, Loader2, LogIn } from "lucide-react";
+import { Sparkles, Map, Link, Loader2, LogIn } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLanguage } from "../lib/i18n";
 import { cn } from "../lib/utils";
 import { useTripNavigation } from "../hooks/useTripNavigation";
+import LanguageToggle from "../components/LanguageToggle";
+import ModeSwitch from "../components/ModeSwitch";
 
 type Mode = "create" | "join";
 
 export default function LandingPage() {
-  const { t, lang, setLang } = useLanguage();
-  const [mode, setMode] = useState<Mode>("create");
+  const { t } = useLanguage();
   const { slug, setSlug, error, loading, handleCreateTrip, handleJoinTrip } = useTripNavigation(t);
+  const [mode, setMode] = useState<Mode>("create");
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     mode === "create" ? handleCreateTrip() : handleJoinTrip();
   };
-
-  const toggleLanguage = () => setLang(lang === "en" ? "id" : "en");
 
   const switchMode = (newMode: Mode) => {
     setMode(newMode);
@@ -26,15 +26,7 @@ export default function LandingPage() {
 
   return (
     <div className="flex flex-col items-center justify-center flex-1 w-full p-6 text-center max-w-md mx-auto relative">
-      <button
-        onClick={toggleLanguage}
-        className="absolute top-6 right-6 bg-white/50 backdrop-blur-md border border-pastel-yellow/30 px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-sm font-sans font-bold text-xs text-ink-light hover:text-ink transition-colors"
-      >
-        <Globe className="w-4 h-4" />
-        <span className={cn(lang === "en" && "text-pastel-pink")}>EN</span>
-        <span className="text-pastel-yellow">/</span>
-        <span className={cn(lang === "id" && "text-pastel-pink")}>ID</span>
-      </button>
+      <LanguageToggle className="absolute top-6 right-6" />
 
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
@@ -52,28 +44,7 @@ export default function LandingPage() {
           {t("landingSubtitle")}
         </p>
 
-        <div className="flex bg-pastel-cream rounded-xl p-1 mb-5">
-          {(["create", "join"] as Mode[]).map((m) => (
-            <button
-              key={m}
-              onClick={() => switchMode(m)}
-              className={cn(
-                "flex-1 py-2.5 rounded-lg font-sans font-bold text-sm transition-all relative",
-                mode === m
-                  ? "bg-white text-pastel-pink shadow-sm"
-                  : "text-ink-light hover:text-ink"
-              )}
-            >
-              {m === "create" && (
-                <Sparkles className="w-4 h-4 inline mr-1.5 -mt-0.5" />
-              )}
-              {m === "join" && (
-                <LogIn className="w-4 h-4 inline mr-1.5 -mt-0.5" />
-              )}
-              {m === "create" ? t("tabCreate") : t("tabJoin")}
-            </button>
-          ))}
-        </div>
+        <ModeSwitch mode={mode} onModeChange={switchMode} />
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <AnimatePresence mode="wait">
@@ -124,7 +95,7 @@ export default function LandingPage() {
               "text-white font-bold font-display text-xl px-8 py-4 rounded-2xl w-full flex items-center justify-center gap-2 shadow-lg transition-shadow disabled:opacity-70",
               mode === "create"
                 ? "bg-pastel-pink shadow-pastel-pink/30 hover:shadow-pastel-pink/50"
-                : "bg-pastel-purple shadow-pastel-purple/30 hover:shadow-pastel-purple/50"
+                : "bg-pastel-purple shadow-pastel-purple/30 hover:shadow-pastel-purple/50",
             )}
           >
             {loading ? (
