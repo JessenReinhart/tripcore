@@ -1,81 +1,20 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
 import { Sparkles, Map, Globe, Link, Loader2, LogIn } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLanguage } from "../lib/i18n";
 import { cn } from "../lib/utils";
-import { checkSlugAvailable, resolveSlug } from "../lib/firebase";
+import { useTripNavigation } from "../hooks/useTripNavigation";
 
 type Mode = "create" | "join";
 
 export default function LandingPage() {
-  const navigate = useNavigate();
   const { t, lang, setLang } = useLanguage();
   const [mode, setMode] = useState<Mode>("create");
-  const [slug, setSlug] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const slugIsValid = (s: string) => /^[a-z0-9][a-z0-9-]{2,28}[a-z0-9]$/.test(s);
-
-  const handleCreateTrip = async () => {
-    const tripId = crypto.randomUUID();
-    const customSlug = slug.trim().toLowerCase();
-
-    if (!customSlug) {
-      navigate(`/trip/${tripId}`);
-      return;
-    }
-
-    if (!slugIsValid(customSlug)) {
-      setError(t("slugInvalid"));
-      return;
-    }
-
-    setLoading(true);
-    const available = await checkSlugAvailable(customSlug);
-    setLoading(false);
-
-    if (!available) {
-      setError(t("slugTaken"));
-      return;
-    }
-
-    navigate(`/trip/${customSlug}`, { state: { tripId, slug: customSlug } });
-  };
-
-  const handleJoinTrip = async () => {
-    const input = slug.trim().toLowerCase();
-    if (!input) return;
-
-    setLoading(true);
-    setError("");
-
-    // If it looks like a UUID, navigate directly
-    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input)) {
-      setLoading(false);
-      navigate(`/trip/${input}`);
-      return;
-    }
-
-    const resolvedId = await resolveSlug(input);
-    setLoading(false);
-
-    if (!resolvedId) {
-      setError(t("slugNotFound"));
-      return;
-    }
-
-    navigate(`/trip/${input}`);
-  };
+  const { slug, setSlug, error, loading, handleCreateTrip, handleJoinTrip } = useTripNavigation(t);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (mode === "create") {
-      handleCreateTrip();
-    } else {
-      handleJoinTrip();
-    }
+    mode === "create" ? handleCreateTrip() : handleJoinTrip();
   };
 
   const toggleLanguage = () => setLang(lang === "en" ? "id" : "en");
@@ -83,7 +22,6 @@ export default function LandingPage() {
   const switchMode = (newMode: Mode) => {
     setMode(newMode);
     setSlug("");
-    setError("");
   };
 
   return (
@@ -114,7 +52,6 @@ export default function LandingPage() {
           {t("landingSubtitle")}
         </p>
 
-        {/* Mode toggle */}
         <div className="flex bg-pastel-cream rounded-xl p-1 mb-5">
           {(["create", "join"] as Mode[]).map((m) => (
             <button
@@ -158,10 +95,7 @@ export default function LandingPage() {
                   }
                   className="w-full bg-pastel-cream border-none pl-11 pr-4 py-3 rounded-xl font-mono text-sm focus:ring-2 focus:ring-pastel-pink/50 outline-none text-ink"
                   value={slug}
-                  onChange={(e) => {
-                    setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
-                    setError("");
-                  }}
+                  onChange={(e) => setSlug(e.target.value)}
                   maxLength={40}
                   autoComplete="off"
                 />

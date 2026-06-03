@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export type Language = 'en' | 'id';
+type Language = 'en' | 'id';
 
-export const translations = {
+const translations = {
   en: {
     // LandingPage
     landingTitle: "tripcore",

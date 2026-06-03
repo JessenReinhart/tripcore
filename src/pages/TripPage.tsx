@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Map, Receipt, Calendar, CheckSquare, Pencil, Globe, UserPlus, Check, Download } from "lucide-react";
-import { Trip, Member } from "../types";
 import NameSetupModal from "../components/NameSetupModal";
 import MemberPickerModal from "../components/MemberPickerModal";
 import OnboardingModal from "../components/OnboardingModal";
@@ -13,220 +12,58 @@ import ChecklistTab from "../components/tabs/ChecklistTab";
 import { cn } from "../lib/utils";
 import { triggerCelebration } from "../lib/confetti";
 import { useLanguage } from "../lib/i18n";
-import { ensureAuth, subscribeToTrip, saveTrip, resolveSlug } from "../lib/firebase";
-import { hashPin } from "../lib/crypto";
+import { saveTrip } from "../lib/firebase";
+import { usePwaInstall } from "../hooks/usePwaInstall";
+import { useShare } from "../hooks/useShare";
+import { useTripSubscription } from "../hooks/useTripSubscription";
+import { useTripIdentity } from "../hooks/useTripIdentity";
 
 type TabId = "dashboard" | "split" | "itinerary" | "checklist";
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const TAB_ITEMS: { id: TabId; icon: typeof Map; labelKey: string }[] = [
+  { id: "dashboard", icon: Map, labelKey: 'navHome' },
+  { id: "split", icon: Receipt, labelKey: 'navSplit' },
+  { id: "itinerary", icon: Calendar, labelKey: 'navGuide' },
+  { id: "checklist", icon: CheckSquare, labelKey: 'navPack' },
+];
 
 export default function TripPage() {
   const { tripId } = useParams<{ tripId: string }>();
   const location = useLocation();
-  const [resolvedTripId, setResolvedTripId] = useState<string | null>(null);
-  const [trip, setTrip] = useState<Trip | null>(null);
-  const [currentUser, setCurrentUser] = useState<Member | null>(null);
-  const [firebaseUid, setFirebaseUid] = useState<string | null>(null);
-  
-  const [isNameModalOpen, setIsNameModalOpen] = useState(false);
-  const [isMemberPickerOpen, setIsMemberPickerOpen] = useState(false);
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
-  
-  const [activeTab, setActiveTab] = useState<TabId>("dashboard");
-
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [titleInput, setTitleInput] = useState("");
-  const [isCopied, setIsCopied] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const state = location.state as { tripId?: string; slug?: string } | null;
 
   const { t, lang, setLang } = useLanguage();
+  const { deferredPrompt, handleInstallClick } = usePwaInstall();
+  const { resolvedTripId, trip, firebaseUid } = useTripSubscription(tripId, state?.slug, t);
+  const {
+    currentUser,
+    isNameModalOpen,
+    isMemberPickerOpen,
+    setIsNameModalOpen,
+    handleNameJoin,
+    handleReclaimMember,
+    handleNewMemberFromPicker,
+  } = useTripIdentity(trip, firebaseUid, resolvedTripId);
+  const { isCopied, handleShare } = useShare(trip, t);
 
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e: any) => {
-      // Prevent the mini-infobar from appearing on mobile
-      e.preventDefault();
-      // Stash the event so it can be triggered later
-      setDeferredPrompt(e);
-    };
+  const [activeTab, setActiveTab] = useState<TabId>("dashboard");
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleInput, setTitleInput] = useState("");
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    // Show the install prompt
-    deferredPrompt.prompt();
-    // Wait for the user to respond to the prompt
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setDeferredPrompt(null);
-    }
-  };
-
-  const shareUrl = trip?.slug
-    ? `${window.location.origin}/trip/${trip.slug}`
-    : window.location.href;
-
-  const handleShare = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: trip?.title || t('defaultTripName'),
-          text: `${t('joinOurTrip')} ${trip?.title}`,
-          url: shareUrl,
-        });
-      } else {
-        await navigator.clipboard.writeText(shareUrl);
-        setIsCopied(true);
-        setTimeout(() => setIsCopied(false), 2000);
-      }
-    } catch (err) {
-      console.log('Error sharing:', err);
-    }
-  };
-
-  useEffect(() => {
-    if (!tripId) return;
-
-    // If it looks like a UUID, use directly. Otherwise resolve as slug.
-    if (UUID_RE.test(tripId)) {
-      setResolvedTripId(tripId);
-    } else {
-      resolveSlug(tripId).then((id) => {
-        if (id) {
-          setResolvedTripId(id);
-        } else {
-          // Slug not found — treat as new trip with slug from navigation state
-          const state = location.state as { tripId?: string; slug?: string } | null;
-          const realId = state?.tripId || crypto.randomUUID();
-          setResolvedTripId(realId);
-        }
-      });
-    }
-  }, [tripId]);
-
-  useEffect(() => {
-    if (!resolvedTripId) return;
-
-    let unsubscribe: (() => void) | undefined;
-
-    ensureAuth().then((uid) => {
-      setFirebaseUid(uid);
-
-      unsubscribe = subscribeToTrip(resolvedTripId, (remoteTrip) => {
-        if (remoteTrip) {
-          // Migrate old schema to new schema
-          const migrated = { ...remoteTrip };
-          if (migrated.savingTargetPerMember === undefined) {
-            migrated.savingTargetPerMember = 1000000;
-          }
-          migrated.members = migrated.members.map((m) => ({
-            ...m,
-            totalContributed: m.totalContributed || 0,
-          }));
-          setTrip(migrated);
-        } else {
-          // First visit — seed the trip document
-          const state = location.state as { tripId?: string; slug?: string } | null;
-          const newTrip: Trip = {
-            id: resolvedTripId,
-            title: t('defaultTripTitle'),
-            slug: state?.slug || tripId,
-            savingTargetPerMember: 1000000,
-            members: [],
-            expenses: [],
-            itinerary: [
-              { id: crypto.randomUUID(), dateLabel: t('dayLabel', { number: 1 }), activities: [] }
-            ],
-            checklist: [],
-            createdAt: Date.now(),
-          };
-          saveTrip(resolvedTripId, newTrip);
-          // onSnapshot will fire with the new trip — no need to setTrip here
-        }
-      });
-
-    });
-
-    return () => {
-      unsubscribe?.();
-    };
-  }, [resolvedTripId]);
-
-  useEffect(() => {
-    if (trip && firebaseUid) {
-      // 1) Try localStorage member ID first
-      const storedUserId = localStorage.getItem(`trip_user_${trip.id}`);
-      if (storedUserId) {
-        const member = trip.members.find(m => m.id === storedUserId);
-        if (member) {
-          setCurrentUser(member);
-          return;
-        }
-      }
-      // 2) Fallback: match by Firebase UID (handles localStorage clear / new device)
-      const memberByUid = trip.members.find(m => m.firebaseUid === firebaseUid);
-      if (memberByUid) {
-        localStorage.setItem(`trip_user_${trip.id}`, memberByUid.id);
-        setCurrentUser(memberByUid);
-        return;
-      }
-      // 3) No identity found — show picker if members exist, otherwise ask for name
-      if (trip.members.length > 0) {
-        setIsMemberPickerOpen(true);
-      } else {
-        setIsNameModalOpen(true);
-      }
-    }
-  }, [trip, firebaseUid]);
-
-  const handleNameJoin = async (name: string, pin: string) => {
-    if (!trip || !resolvedTripId) return;
-    const pinHashStr = await hashPin(pin);
-    const newMember: Member = {
-      id: crypto.randomUUID(),
-      name,
-      totalContributed: 0,
-      firebaseUid: firebaseUid ?? undefined,
-      pinHash: pinHashStr,
-    };
-    localStorage.setItem(`trip_user_${resolvedTripId}`, newMember.id);
-    const updatedTrip = { ...trip, members: [...trip.members, newMember] };
+  const updateTrip = (updatedTrip: typeof trip) => {
+    if (!resolvedTripId || !updatedTrip) return;
     saveTrip(resolvedTripId, updatedTrip);
-    setIsNameModalOpen(false);
-
-    setTimeout(() => {
-      setIsOnboardingOpen(true);
-    }, 400);
   };
 
-  const handleReclaimMember = (member: Member) => {
-    if (!trip || !resolvedTripId || !firebaseUid) return;
-    const updatedMembers = trip.members.map((m) =>
-      m.id === member.id ? { ...m, firebaseUid } : m
-    );
-    localStorage.setItem(`trip_user_${resolvedTripId}`, member.id);
-    saveTrip(resolvedTripId, { ...trip, members: updatedMembers });
-    setIsMemberPickerOpen(false);
-  };
-
-  const handleNewMemberFromPicker = () => {
-    setIsMemberPickerOpen(false);
-    setIsNameModalOpen(true);
+  const handleNameJoinWithOnboarding = async (name: string, pin: string) => {
+    await handleNameJoin(name, pin);
+    setTimeout(() => setIsOnboardingOpen(true), 400);
   };
 
   const handleOnboardingComplete = () => {
     setIsOnboardingOpen(false);
     triggerCelebration();
-  };
-
-  const updateTrip = (updatedTrip: Trip) => {
-    if (!resolvedTripId) return;
-    saveTrip(resolvedTripId, updatedTrip);
   };
 
   const handleSaveTitle = () => {
@@ -236,9 +73,7 @@ export default function TripPage() {
     setIsEditingTitle(false);
   };
 
-  const toggleLanguage = () => {
-    setLang(lang === 'en' ? 'id' : 'en');
-  };
+  const toggleLanguage = () => setLang(lang === 'en' ? 'id' : 'en');
 
   if (!trip) return null;
 
@@ -247,7 +82,7 @@ export default function TripPage() {
       <header className="p-6 pb-2 pt-6 flex flex-col gap-4">
         <div className="flex justify-end gap-2 w-full flex-wrap">
           {deferredPrompt && (
-            <button 
+            <button
               onClick={handleInstallClick}
               className="bg-white/50 backdrop-blur-md border border-pastel-yellow/30 px-2.5 py-1.5 rounded-xl flex items-center shadow-sm font-sans font-bold text-[10px] text-ink transition-colors h-8"
             >
@@ -255,7 +90,7 @@ export default function TripPage() {
               <span>{t('installApp')}</span>
             </button>
           )}
-          <button 
+          <button
             onClick={toggleLanguage}
             className="bg-white/50 backdrop-blur-md border border-pastel-yellow/30 px-2.5 py-1.5 rounded-xl flex items-center shadow-sm font-sans font-bold text-[10px] text-ink-light hover:text-ink transition-colors h-8"
           >
@@ -264,7 +99,7 @@ export default function TripPage() {
             <span className="text-pastel-yellow mx-0.5">/</span>
             <span className={cn(lang === 'id' && "text-pastel-pink")}>ID</span>
           </button>
-          <button 
+          <button
             onClick={handleShare}
             className="bg-pastel-pink text-white px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm shadow-pastel-pink/30 hover:shadow-pastel-pink/50 font-sans font-bold text-[11px] transition-all active:scale-95 h-8"
           >
@@ -276,8 +111,8 @@ export default function TripPage() {
         <div className="w-full">
           {isEditingTitle ? (
             <div className="flex items-center mb-1">
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={titleInput}
                 onChange={(e) => setTitleInput(e.target.value)}
                 onBlur={handleSaveTitle}
@@ -287,8 +122,8 @@ export default function TripPage() {
               />
             </div>
           ) : (
-            <div 
-              className="flex items-center gap-2 mb-1 group cursor-pointer w-fit max-w-full" 
+            <div
+              className="flex items-center gap-2 mb-1 group cursor-pointer w-fit max-w-full"
               onClick={() => { setTitleInput(trip.title); setIsEditingTitle(true); }}
               title={t('editTripName')}
             >
@@ -322,41 +157,35 @@ export default function TripPage() {
             {activeTab === "checklist" && <ChecklistTab trip={trip} updateTrip={updateTrip} currentUser={currentUser} />}
           </motion.div>
         </AnimatePresence>
-        
+
         <div className="mt-8 mb-4 text-center opacity-40 flex items-center justify-center gap-1.5 font-display font-bold text-ink">
           <Map className="w-4 h-4 text-pastel-pink" />
           tripcore
         </div>
       </main>
 
-      <NameSetupModal isOpen={isNameModalOpen} onJoin={handleNameJoin} />
+      <NameSetupModal isOpen={isNameModalOpen} onJoin={handleNameJoinWithOnboarding} />
       <MemberPickerModal
         isOpen={isMemberPickerOpen}
         members={trip.members}
         onReclaim={handleReclaimMember}
         onNewMember={handleNewMemberFromPicker}
       />
-      <OnboardingModal 
-        isOpen={isOnboardingOpen} 
-        onComplete={handleOnboardingComplete} 
+      <OnboardingModal
+        isOpen={isOnboardingOpen}
+        onComplete={handleOnboardingComplete}
         onStepChange={(stepId) => setActiveTab(stepId as TabId)}
       />
 
-      {/* Floating Bottom Nav */}
       <div className={cn("fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm transition-all duration-300 pointer-events-auto", isOnboardingOpen ? "z-[60] ring-4 ring-pastel-pink/30 rounded-3xl scale-105" : "z-40")}>
         <div className="bg-white p-2 rounded-3xl shadow-xl shadow-pastel-pink/10 border-2 border-pastel-yellow/20 flex justify-between items-center relative">
-          {[
-            { id: "dashboard", icon: Map, label: t('navHome') },
-            { id: "split", icon: Receipt, label: t('navSplit') },
-            { id: "itinerary", icon: Calendar, label: t('navGuide') },
-            { id: "checklist", icon: CheckSquare, label: t('navPack') },
-          ].map((tab) => {
+          {TAB_ITEMS.map((tab) => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as TabId)}
+                onClick={() => setActiveTab(tab.id)}
                 className="relative flex-1 py-3 flex flex-col items-center justify-center gap-1 z-10 tap-highlight-transparent"
               >
                 {isActive && (
@@ -368,14 +197,13 @@ export default function TripPage() {
                 )}
                 <Icon className={cn("w-6 h-6 transition-colors", isActive ? "text-pastel-pink" : "text-ink-light")} />
                 <span className={cn("text-[10px] font-display font-bold transition-colors", isActive ? "text-pastel-pink" : "text-ink-light")}>
-                  {tab.label}
+                  {t(tab.labelKey)}
                 </span>
               </button>
-            )
+            );
           })}
         </div>
       </div>
     </div>
   );
 }
-
