@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Trip } from "../types";
 import { ensureAuth, subscribeToTrip, saveTrip, resolveSlug } from "../lib/firebase";
 
@@ -12,6 +12,14 @@ export function useTripSubscription(
   const [resolvedTripId, setResolvedTripId] = useState<string | null>(null);
   const [trip, setTrip] = useState<Trip | null>(null);
   const [firebaseUid, setFirebaseUid] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   // Resolve trip ID (UUID or slug)
   useEffect(() => {
@@ -19,56 +27,77 @@ export function useTripSubscription(
     if (UUID_RE.test(tripId)) {
       setResolvedTripId(tripId);
     } else {
-      resolveSlug(tripId).then((id) => {
-        if (id) {
-          setResolvedTripId(id);
-        } else {
+      resolveSlug(tripId)
+        .then((id) => {
+          if (!mountedRef.current) return;
+          setResolvedTripId(id || crypto.randomUUID());
+        })
+        .catch(() => {
+          if (!mountedRef.current) return;
           setResolvedTripId(crypto.randomUUID());
-        }
-      });
+        });
     }
   }, [tripId]);
 
   // Subscribe to Firestore
   useEffect(() => {
     if (!resolvedTripId) return;
-    let unsubscribe: (() => void) | undefined;
 
-    ensureAuth().then((uid) => {
-      setFirebaseUid(uid);
+    let cancelled = false;
+    const unsubscribeRef: { current: (() => void) | undefined } = { current: undefined };
 
-      unsubscribe = subscribeToTrip(resolvedTripId, (remoteTrip) => {
-        if (remoteTrip) {
-          const migrated = { ...remoteTrip };
-          if (migrated.savingTargetPerMember === undefined) {
-            migrated.savingTargetPerMember = 1000000;
+    ensureAuth()
+      .then((uid) => {
+        if (cancelled || !mountedRef.current) return;
+        setFirebaseUid(uid);
+
+        unsubscribeRef.current = subscribeToTrip(resolvedTripId, (remoteTrip) => {
+          if (cancelled || !mountedRef.current) return;
+
+          if (remoteTrip) {
+            const migrated = { ...remoteTrip };
+            if (migrated.savingTargetPerMember === undefined) {
+              migrated.savingTargetPerMember = 1000000;
+            }
+            migrated.members = migrated.members.map((m) => ({
+              ...m,
+              totalContributed: m.totalContributed || 0,
+            }));
+            setTrip(migrated);
+          } else {
+            const newTrip: Trip = {
+              id: resolvedTripId,
+              title: t("defaultTripTitle"),
+              slug: slugFromState || tripId,
+              savingTargetPerMember: 1000000,
+              members: [],
+              expenses: [],
+              itinerary: [
+                { id: crypto.randomUUID(), dateLabel: t("dayLabel", { number: 1 }), activities: [] },
+              ],
+              checklist: [],
+              createdAt: Date.now(),
+            };
+            saveTrip(resolvedTripId, newTrip).catch(() => {
+              if (!cancelled && mountedRef.current) {
+                setError("Failed to create trip. Check your connection.");
+              }
+            });
           }
-          migrated.members = migrated.members.map((m) => ({
-            ...m,
-            totalContributed: m.totalContributed || 0,
-          }));
-          setTrip(migrated);
-        } else {
-          const newTrip: Trip = {
-            id: resolvedTripId,
-            title: t('defaultTripTitle'),
-            slug: slugFromState || tripId,
-            savingTargetPerMember: 1000000,
-            members: [],
-            expenses: [],
-            itinerary: [
-              { id: crypto.randomUUID(), dateLabel: t('dayLabel', { number: 1 }), activities: [] }
-            ],
-            checklist: [],
-            createdAt: Date.now(),
-          };
-          saveTrip(resolvedTripId, newTrip);
-        }
+          setLoading(false);
+        });
+      })
+      .catch(() => {
+        if (cancelled || !mountedRef.current) return;
+        setError("Failed to authenticate. Check your connection.");
+        setLoading(false);
       });
-    });
 
-    return () => { unsubscribe?.(); };
+    return () => {
+      cancelled = true;
+      unsubscribeRef.current?.();
+    };
   }, [resolvedTripId]);
 
-  return { resolvedTripId, trip, firebaseUid, setTrip };
+  return { resolvedTripId, trip, firebaseUid, loading, error };
 }

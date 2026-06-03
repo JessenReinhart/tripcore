@@ -6,7 +6,7 @@ import { LanguageProvider } from './lib/i18n.tsx';
 import './index.css';
 import { registerSW } from 'virtual:pwa-register';
 
-const updateSW = registerSW({
+registerSW({
   onNeedRefresh() {
     // We could show a prompt here, but for now we'll just wait for the next load
   },

@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { Map } from "lucide-react";
+import { Map, Loader2, AlertTriangle } from "lucide-react";
 import NameSetupModal from "../components/NameSetupModal";
 import MemberPickerModal from "../components/MemberPickerModal";
 import OnboardingModal from "../components/OnboardingModal";
@@ -29,7 +29,7 @@ export default function TripPage() {
 
   const { t } = useLanguage();
   const { deferredPrompt, handleInstallClick } = usePwaInstall();
-  const { resolvedTripId, trip, firebaseUid } = useTripSubscription(tripId, state?.slug, t);
+  const { resolvedTripId, trip, firebaseUid, loading, error } = useTripSubscription(tripId, state?.slug, t);
   const {
     currentUser,
     isNameModalOpen,
@@ -45,10 +45,10 @@ export default function TripPage() {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState("");
 
-  const updateTrip = (updatedTrip: typeof trip) => {
+  const updateTrip = useCallback((updatedTrip: typeof trip) => {
     if (!resolvedTripId || !updatedTrip) return;
     saveTrip(resolvedTripId, updatedTrip);
-  };
+  }, [resolvedTripId]);
 
   const handleNameJoinWithOnboarding = async (name: string, pin: string) => {
     await handleNameJoin(name, pin);
@@ -72,6 +72,28 @@ export default function TripPage() {
     setTitleInput(trip.title);
     setIsEditingTitle(true);
   };
+
+  if (loading) {
+    return (
+      <div className="w-full max-w-lg mx-auto min-h-screen flex items-center justify-center bg-pastel-cream">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-10 h-10 text-pastel-pink animate-spin" />
+          <p className="text-ink-light font-sans text-sm">{t("loadingTrip")}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full max-w-lg mx-auto min-h-screen flex items-center justify-center bg-pastel-cream p-6">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <AlertTriangle className="w-10 h-10 text-pastel-pink" />
+          <p className="text-ink font-sans font-bold">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!trip) return null;
 

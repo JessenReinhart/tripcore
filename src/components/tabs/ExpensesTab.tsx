@@ -34,8 +34,8 @@ const calculateSettlements = (trip: Trip) => {
   return settlements;
 };
 
-const getMemberName = (trip: Trip, id: string) =>
-  trip.members.find(m => m.id === id)?.name || "Unknown";
+const getMemberName = (trip: Trip, id: string, unknownLabel: string) =>
+  trip.members.find(m => m.id === id)?.name || unknownLabel;
 
 export default function ExpensesTab({ trip, updateTrip, currentUser }: Props) {
   const { t } = useLanguage();
@@ -81,13 +81,13 @@ export default function ExpensesTab({ trip, updateTrip, currentUser }: Props) {
             <Receipt className="text-pastel-pink w-5 h-5" /> {t('howToSettleUp')}
           </h3>
           <div className="flex flex-col gap-3">
-            {settlements.map((s, i) => (
-              <div key={i} className="flex items-center justify-between bg-pastel-cream p-4 rounded-2xl">
+            {settlements.map((s) => (
+              <div key={`${s.from}-${s.to}`} className="flex items-center justify-between bg-pastel-cream p-4 rounded-2xl">
                 <span className="font-sans font-medium text-ink">
-                  <strong className="font-bold">{getMemberName(trip, s.from)}</strong> {t('owes')}{" "}
-                  <strong className="font-bold">{getMemberName(trip, s.to)}</strong>
+                  <strong className="font-bold">{getMemberName(trip, s.from, t("unknownMember"))}</strong> {t('owes')}{" "}
+                  <strong className="font-bold">{getMemberName(trip, s.to, t("unknownMember"))}</strong>
                 </span>
-                <span className="font-display font-bold text-pastel-pink">Rp {Math.round(s.amount).toLocaleString()}</span>
+                <span className="font-display font-bold text-pastel-pink">{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(Math.round(s.amount))}</span>
               </div>
             ))}
           </div>
@@ -101,7 +101,7 @@ export default function ExpensesTab({ trip, updateTrip, currentUser }: Props) {
         ) : (
           <AnimatePresence>
             {trip.expenses.map(exp => {
-              const Icon = CATEGORY_ICONS[exp.category];
+              const Icon = CATEGORY_ICONS[exp.category] || Receipt;
               return (
                 <motion.div key={exp.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-4 rounded-2xl flex items-center gap-4 shadow-sm border-2 border-pastel-cream">
                   <div className="w-12 h-12 bg-pastel-yellow/30 rounded-full flex items-center justify-center shrink-0">
@@ -109,10 +109,10 @@ export default function ExpensesTab({ trip, updateTrip, currentUser }: Props) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-sans font-bold text-ink truncate">{exp.title}</p>
-                    <p className="text-xs text-ink-light">{t('paidByText')} {getMemberName(trip, exp.paidBy)}</p>
+                    <p className="text-xs text-ink-light">{t('paidByText')} {getMemberName(trip, exp.paidBy, t("unknownMember"))}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="font-display font-bold text-ink">Rp {exp.amount.toLocaleString()}</p>
+                    <p className="font-display font-bold text-ink">{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(exp.amount)}</p>
                     <p className="text-[10px] text-ink-light font-bold">{t('splitText')} {exp.splitBetween.length}</p>
                   </div>
                 </motion.div>

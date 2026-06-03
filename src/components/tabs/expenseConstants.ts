@@ -1,5 +1,5 @@
 import { Coffee, Car, Home, PartyPopper, Receipt } from "lucide-react";
-import { ExpenseCategory, Trip } from "../../types";
+import { Trip } from "../../types";
 
 export const CATEGORY_ICONS = {
   Food: Coffee,

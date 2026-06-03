@@ -115,6 +115,10 @@ const translations = {
     skip: "Skip",
     next: "Next",
     finish: "Finish",
+
+    // Generic
+    unknownMember: "Unknown",
+    loadingTrip: "Loading trip...",
   },
   id: {
     // LandingPage
@@ -226,15 +230,17 @@ const translations = {
     skip: "Skip",
     next: "Lanjut",
     finish: "Mulai",
+
+    // Generic
+    unknownMember: "Ga Dikenal",
+    loadingTrip: "Memuat trip...",
   }
 };
-
-type Translations = typeof translations.en;
 
 const LanguageContext = createContext<{
   lang: Language;
   setLang: (lang: Language) => void;
-  t: (key: keyof Translations, params?: Record<string, string | number>) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }>({
   lang: 'id',
   setLang: () => {},
@@ -250,8 +256,8 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
     localStorage.setItem('tripcore_lang', lang);
   }, [lang]);
 
-  const t = (key: keyof Translations, params?: Record<string, string | number>) => {
-    let str = translations[lang][key] || translations['en'][key] || key;
+  const t = (key: string, params?: Record<string, string | number>) => {
+    let str = (translations[lang] as Record<string, string>)[key] || (translations['en'] as Record<string, string>)[key] || key;
     if (params) {
       Object.entries(params).forEach(([k, v]) => {
         str = str.replace(`{${k}}`, String(v));

@@ -1,7 +1,7 @@
 import { Trip, ItineraryDay, Activity } from "../../types";
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Clock, X, Calendar, Trash2 } from "lucide-react";
+import { Plus, Clock, Calendar, Trash2 } from "lucide-react";
 import { triggerDopamine } from "../../lib/confetti";
 import { useLanguage } from "../../lib/i18n";
 import ActivityForm from "./ActivityForm";

@@ -8,7 +8,7 @@
     "minOccurrences": 3
   },
   "health": {
-    "maxCrap": 75.0
+    "maxCrap": 95.0
   },
   "rules": {}
 }

@@ -9,7 +9,7 @@ interface TripTitleProps {
   onStartEdit: () => void;
   onSave: () => void;
   t: (key: string) => string;
-  slug: string;
+  slug?: string;
   shortId: string;
 }
 

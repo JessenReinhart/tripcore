@@ -51,11 +51,14 @@ export function useTripIdentity(
     setIsNameModalOpen(false);
   }, [trip, resolvedTripId, firebaseUid]);
 
-  const handleReclaimMember = useCallback((member: Member) => {
+  const handleReclaimMember = useCallback((member: Member, upgradedPinHash?: string) => {
     if (!trip || !resolvedTripId || !firebaseUid) return;
-    const updatedMembers = trip.members.map((m) =>
-      m.id === member.id ? { ...m, firebaseUid } : m
-    );
+    const updatedMembers = trip.members.map((m) => {
+      if (m.id !== member.id) return m;
+      const updates: Partial<Member> = { firebaseUid };
+      if (upgradedPinHash) updates.pinHash = upgradedPinHash;
+      return { ...m, ...updates };
+    });
     localStorage.setItem(`trip_user_${resolvedTripId}`, member.id);
     saveTrip(resolvedTripId, { ...trip, members: updatedMembers });
     setIsMemberPickerOpen(false);

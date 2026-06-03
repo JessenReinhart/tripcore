@@ -8,7 +8,7 @@ import { useLanguage } from "../lib/i18n";
 type Props = {
   isOpen: boolean;
   members: Member[];
-  onReclaim: (member: Member) => void;
+  onReclaim: (member: Member, upgradedPinHash?: string) => void;
   onNewMember: () => void;
 };
 
@@ -20,18 +20,27 @@ export default function MemberPickerModal({
 }: Props) {
   const { t } = useLanguage();
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [confirmLegacy, setConfirmLegacy] = useState(false);
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
 
   const handleSelect = (member: Member) => {
-    // Legacy members without PIN — reclaim immediately
-    if (!member.pinHash) {
-      onReclaim(member);
-      return;
-    }
     setSelectedMember(member);
+    setConfirmLegacy(false);
     setPin("");
     setError("");
+
+    // Legacy members without PIN — ask for confirmation before reclaiming
+    if (!member.pinHash) {
+      setConfirmLegacy(true);
+    }
+  };
+
+  const handleConfirmLegacy = () => {
+    if (!selectedMember) return;
+    onReclaim(selectedMember);
+    setSelectedMember(null);
+    setConfirmLegacy(false);
   };
 
   const handleVerifyPin = async (e: React.FormEvent) => {
@@ -41,9 +50,14 @@ export default function MemberPickerModal({
     const trimmedPin = pin.trim();
     if (trimmedPin.length < 4) return;
 
-    const valid = await verifyPin(trimmedPin, selectedMember.pinHash);
+    let upgradedHash: string | undefined;
+
+    const valid = await verifyPin(trimmedPin, selectedMember.pinHash, (newHash) => {
+      upgradedHash = newHash;
+    });
+
     if (valid) {
-      onReclaim(selectedMember);
+      onReclaim(selectedMember, upgradedHash);
       setSelectedMember(null);
       setPin("");
       setError("");
@@ -114,6 +128,42 @@ export default function MemberPickerModal({
                   {t("memberPickerNew")}
                 </button>
               </>
+            ) : confirmLegacy && !selectedMember.pinHash ? (
+              <div className="flex flex-col gap-4">
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="self-start text-ink-light hover:text-ink p-1 -ml-1 rounded-full transition-colors"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+
+                <div className="bg-pastel-yellow/30 w-14 h-14 rounded-full flex items-center justify-center mx-auto">
+                  <Users className="text-pastel-pink w-7 h-7" />
+                </div>
+                <h3 className="font-display font-bold text-xl text-center text-ink">
+                  {selectedMember.name}
+                </h3>
+                <p className="text-ink-light text-center font-sans text-sm -mt-2">
+                  This member has no PIN set. Are you sure this is you?
+                </p>
+
+                <div className="flex gap-3 mt-2">
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    className="flex-1 bg-pastel-cream text-ink font-display font-bold py-4 rounded-2xl hover:bg-pastel-cream/80 transition-colors active:scale-95"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={handleConfirmLegacy}
+                    className="flex-1 bg-pastel-pink text-white font-display font-bold py-4 rounded-2xl shadow-lg shadow-pastel-pink/30 hover:shadow-pastel-pink/50 transition-all active:scale-95"
+                  >
+                    Yes, it's me
+                  </button>
+                </div>
+              </div>
             ) : (
               <form onSubmit={handleVerifyPin} className="flex flex-col gap-4">
                 <button

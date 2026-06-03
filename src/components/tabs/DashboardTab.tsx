@@ -16,9 +16,10 @@ type Props = {
 
 const calculateOwes = (trip: Trip) => {
   const balances = computeBalances(trip);
+  const memberMap = new Map(trip.members.map((m) => [m.id, m]));
   return Object.entries(balances)
-    .filter(([id, amt]) => amt > 1 && trip.members.find(m => m.id === id))
-    .map(([id, amt]) => ({ member: trip.members.find(m => m.id === id)!, amount: amt }));
+    .filter(([id, amt]) => amt > 1 && memberMap.has(id))
+    .map(([id, amt]) => ({ member: memberMap.get(id)!, amount: amt }));
 };
 
 export default function DashboardTab({ trip, updateTrip, currentUser }: Props) {
@@ -68,11 +69,11 @@ export default function DashboardTab({ trip, updateTrip, currentUser }: Props) {
               {t('treasury')}
             </div>
             <p className="text-xs font-sans text-ink-light uppercase font-bold tracking-widest mb-1">{t('totalPooled')}</p>
-            <p className="font-display font-bold text-xl lg:text-2xl text-ink">Rp {totalPooled.toLocaleString()}</p>
+            <p className="font-display font-bold text-xl lg:text-2xl text-ink">{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(totalPooled)}</p>
           </div>
           <div className="flex-1 bg-pastel-cream p-4 rounded-2xl">
             <p className="text-xs font-sans text-ink-light uppercase font-bold tracking-widest mb-1">{t('totalSpent')}</p>
-            <p className="font-display font-bold text-xl lg:text-2xl text-ink">Rp {totalSpent.toLocaleString()}</p>
+            <p className="font-display font-bold text-xl lg:text-2xl text-ink">{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(totalSpent)}</p>
           </div>
         </div>
 
@@ -82,7 +83,7 @@ export default function DashboardTab({ trip, updateTrip, currentUser }: Props) {
               {t('lookForward')} <br />
               {owedList.map((o) => (
                 <span key={o.member.id} className="block mt-1">
-                  <strong className="text-pastel-mint mix-blend-multiply">{o.member.name}</strong> {t('getsBack')} Rp {Math.round(o.amount).toLocaleString()}
+                  <strong className="text-pastel-mint mix-blend-multiply">{o.member.name}</strong> {t('getsBack')} {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(Math.round(o.amount))}
                 </span>
               ))}
             </p>

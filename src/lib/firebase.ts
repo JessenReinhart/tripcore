@@ -74,10 +74,11 @@ export function subscribeToTrip(
   );
 }
 
-/** Write the full trip document to Firestore. */
+/** Write the full trip document to Firestore. Derives memberUids for security rules. */
 export async function saveTrip(tripId: string, trip: Trip): Promise<void> {
+  const memberUids = trip.members.map((m) => m.firebaseUid).filter(Boolean) as string[];
   const tripRef = doc(db, 'trips', tripId);
-  await setDoc(tripRef, trip, { merge: true });
+  await setDoc(tripRef, { ...trip, memberUids }, { merge: true });
 }
 
 /** Check if a slug is already taken by another trip. */
