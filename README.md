@@ -64,18 +64,35 @@ src/
 │   ├── crypto.ts         # SHA-256 PIN hashing
 │   ├── confetti.ts       # canvas-confetti helpers
 │   └── utils.ts          # cn() — clsx + tailwind-merge
+├── hooks/
+│   ├── useTripSubscription.ts  # Firestore real-time trip + slug resolution
+│   ├── useTripIdentity.ts      # Member identity: PIN, localStorage, firebaseUid
+│   ├── useTripNavigation.ts    # Create/join trip with slug validation
+│   ├── usePwaInstall.ts        # beforeinstallprompt handling
+│   └── useShare.ts             # Web Share API + clipboard fallback
 ├── pages/
-│   ├── LandingPage.tsx   # Create new trip → generates UUID
-│   └── TripPage.tsx      # Main shell: header, tabs, bottom nav, modals
+│   ├── LandingPage.tsx   # Create/join trip with custom slug
+│   └── TripPage.tsx      # Main shell: header, identity flow, tab content, modals
 └── components/
-    ├── NameSetupModal.tsx      # First-join: name + PIN
-    ├── MemberPickerModal.tsx   # Reclaim existing identity via PIN
-    ├── OnboardingModal.tsx     # 4-step feature intro carousel
+    ├── LanguageToggle.tsx       # Bilingual EN/ID toggle (shared)
+    ├── ModeSwitch.tsx           # Create/Join mode toggle (landing page)
+    ├── TripHeaderActions.tsx    # Install, language, share buttons
+    ├── TripTitle.tsx            # Editable trip title + slug display
+    ├── TripTabBar.tsx           # Bottom tab navigation with animated pill
+    ├── NameSetupModal.tsx       # First-join: name + PIN
+    ├── MemberPickerModal.tsx    # Reclaim existing identity via PIN
+    ├── OnboardingModal.tsx      # 4-step feature intro carousel
     └── tabs/
-        ├── DashboardTab.tsx    # Treasury, savings goal, deposits
-        ├── ExpensesTab.tsx     # Add/view expenses, settlements
-        ├── ItineraryTab.tsx    # Day-by-day timeline
-        └── ChecklistTab.tsx    # Shared to-do/packing list
+        ├── DashboardTab.tsx     # Treasury, savings goal, deposits
+        ├── ExpensesTab.tsx      # Add/view expenses, settlements
+        ├── ExpenseForm.tsx      # Add/edit expense form
+        ├── DepositModal.tsx     # Deposit funds modal
+        ├── ItineraryTab.tsx     # Day-by-day timeline
+        ├── ActivityForm.tsx     # Add/edit activity form
+        ├── ChecklistTab.tsx     # Shared to-do/packing list
+        ├── ChecklistItem.tsx    # Individual checklist item
+        ├── MemberCard.tsx       # Member summary card
+        └── expenseConstants.ts  # Expense category config
 ```
 
 ## 🔄 Data Flow
