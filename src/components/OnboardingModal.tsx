@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check, Download } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useLanguage } from "../lib/i18n";
+import { usePwaInstall } from "../hooks/usePwaInstall";
 
 type Props = {
   isOpen: boolean;
@@ -13,32 +14,14 @@ type Props = {
 export default function OnboardingModal({ isOpen, onComplete, onStepChange }: Props) {
   const [currentStep, setCurrentStep] = useState(0);
   const { t } = useLanguage();
+  const { deferredPrompt, handleInstallClick } = usePwaInstall();
 
   const STEPS = [
-    {
-      id: "dashboard",
-      title: t('onb1Title'),
-      description: t('onb1Desc'),
-      xPos: "12.5%"
-    },
-    {
-      id: "split",
-      title: t('onb2Title'),
-      description: t('onb2Desc'),
-      xPos: "37.5%"
-    },
-    {
-      id: "itinerary",
-      title: t('onb3Title'),
-      description: t('onb3Desc'),
-      xPos: "62.5%"
-    },
-    {
-      id: "checklist",
-      title: t('onb4Title'),
-      description: t('onb4Desc'),
-      xPos: "87.5%"
-    }
+    { id: "dashboard", title: t('onb1Title'), description: t('onb1Desc'), xPos: "10%" },
+    { id: "split", title: t('onb2Title'), description: t('onb2Desc'), xPos: "30%" },
+    { id: "itinerary", title: t('onb3Title'), description: t('onb3Desc'), xPos: "50%" },
+    { id: "checklist", title: t('onb4Title'), description: t('onb4Desc'), xPos: "70%" },
+    { id: "install", title: t('onb5Title'), description: deferredPrompt ? t('onb5DescInstall') : t('onb5DescManual'), xPos: "90%" },
   ];
 
   useEffect(() => {
@@ -87,6 +70,16 @@ export default function OnboardingModal({ isOpen, onComplete, onStepChange }: Pr
             <p className="font-sans font-medium text-ink-light text-sm mb-6">
               {STEPS[currentStep].description}
             </p>
+
+            {currentStep === STEPS.length - 1 && deferredPrompt && (
+              <button
+                onClick={handleInstallClick}
+                className="w-full bg-pastel-pink text-white font-display font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-md mb-4 active:scale-95 transition-transform hover:shadow-lg hover:shadow-pastel-pink/40"
+              >
+                <Download className="w-4 h-4" />
+                {t('onb5InstallBtn')}
+              </button>
+            )}
 
             <div className="flex justify-between items-center">
               <div className="flex gap-1.5">
