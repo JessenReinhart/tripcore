@@ -57,9 +57,7 @@ function openDirections(destLat: number, destLng: number) {
         const url = `https://www.google.com/maps/dir/?api=1&origin=${pos.coords.latitude},${pos.coords.longitude}&destination=${destLat},${destLng}&travelmode=driving`;
         window.open(url, '_blank');
       },
-      () => {
-        window.open(destUrl, '_blank');
-      },
+      () => window.open(destUrl, '_blank'),
       { timeout: 5000 }
     );
   } else {
@@ -67,20 +65,111 @@ function openDirections(destLat: number, destLng: number) {
   }
 }
 
+function useUndoDay(trip: Trip, updateTrip: (trip: Trip) => void, setActiveDayId: (id: string | null) => void) {
+  const [undoDay, setUndoDay] = useState<{ day: ItineraryDay; index: number } | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); }, []);
+
+  const scheduleDelete = (dayId: string) => {
+    if (trip.itinerary.length <= 1) return;
+    const index = trip.itinerary.findIndex(d => d.id === dayId);
+    const dayToDelete = trip.itinerary[index];
+    if (!dayToDelete) return;
+
+    const filtered = trip.itinerary.filter(d => d.id !== dayId);
+    const newActiveId = filtered[Math.min(index, filtered.length - 1)]?.id || null;
+    setActiveDayId(newActiveId);
+    updateTrip({ ...trip, itinerary: filtered });
+
+    setUndoDay({ day: dayToDelete, index });
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => setUndoDay(null), 5000);
+  };
+
+  const undo = () => {
+    if (!undoDay) return;
+    const restored = [...trip.itinerary];
+    restored.splice(undoDay.index, 0, undoDay.day);
+    updateTrip({ ...trip, itinerary: restored });
+    setActiveDayId(undoDay.day.id);
+    setUndoDay(null);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+  };
+
+  const dismiss = () => {
+    setUndoDay(null);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+  };
+
+  return { undoDay, scheduleDelete, undo, dismiss };
+}
+
+function DayHeader({
+  day, canDelete, onDateChange, onDelete, t, lang,
+}: {
+  day: ItineraryDay;
+  canDelete: boolean;
+  onDateChange: (dateStr: string) => void;
+  onDelete: () => void;
+  t: (key: string) => string;
+  lang: string;
+}) {
+  const [editing, setEditing] = useState(false);
+
+  return (
+    <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center gap-2">
+        {editing ? (
+          <input
+            type="date" value={day.date || ''}
+            onChange={e => { onDateChange(e.target.value); setEditing(false); }}
+            onBlur={() => setEditing(false)}
+            className="bg-pastel-cream px-3 py-1.5 rounded-xl text-xs font-sans font-bold outline-none focus:ring-2 ring-pastel-pink/50 text-ink"
+            autoFocus
+          />
+        ) : (
+          <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 text-xs text-ink-light font-sans hover:text-pastel-pink transition-colors py-1">
+            <Calendar className="w-3.5 h-3.5" />
+            {day.date ? formatDateFull(day.date, lang) : day.dateLabel}
+            <Pencil className="w-3 h-3" />
+          </button>
+        )}
+      </div>
+      {canDelete && (
+        <button onClick={onDelete} className="flex items-center gap-1 text-xs font-bold text-ink-light hover:text-red-400 transition-colors py-1 px-2 rounded-lg">
+          <Trash2 className="w-3.5 h-3.5" />
+          {t('deleteDay')}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function UndoToast({ onUndo, onDismiss, t }: { onUndo: () => void; onDismiss: () => void; t: (key: string) => string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+      className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-ink text-white px-5 py-3 rounded-2xl shadow-lg flex items-center gap-3 font-sans text-sm"
+    >
+      <span>{t('dayDeleted')}</span>
+      <button onClick={onUndo} className="flex items-center gap-1 font-bold text-pastel-yellow hover:text-pastel-mint transition-colors">
+        <Undo2 className="w-3.5 h-3.5" />
+        {t('undo')}
+      </button>
+      <button onClick={onDismiss} className="text-white/40 hover:text-white/70 transition-colors ml-1">
+        <Plus className="w-4 h-4 rotate-45" />
+      </button>
+    </motion.div>
+  );
+}
+
 export default function ItineraryTab({ trip, updateTrip }: Props) {
   const { t, lang } = useLanguage();
   const [activeDayId, setActiveDayId] = useState<string | null>(trip.itinerary[0]?.id || null);
   const [isAdding, setIsAdding] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
-  const [isEditingDate, setIsEditingDate] = useState(false);
-  const [undoDay, setUndoDay] = useState<{ day: ItineraryDay; index: number } | null>(null);
-  const undoTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-  useEffect(() => {
-    return () => {
-      if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
-    };
-  }, []);
+  const { undoDay, scheduleDelete, undo, dismiss: dismissUndo } = useUndoDay(trip, updateTrip, setActiveDayId);
 
   const handleAddDay = () => {
     dismissUndo();
@@ -102,38 +191,6 @@ export default function ItineraryTab({ trip, updateTrip }: Props) {
     setActiveDayId(newDay.id);
   };
 
-  const handleDeleteDay = (dayId: string) => {
-    if (trip.itinerary.length <= 1) return;
-    const index = trip.itinerary.findIndex(d => d.id === dayId);
-    const dayToDelete = trip.itinerary[index];
-    if (!dayToDelete) return;
-
-    const filtered = trip.itinerary.filter(d => d.id !== dayId);
-    const newActiveId = filtered[Math.min(index, filtered.length - 1)]?.id || null;
-    setActiveDayId(newActiveId);
-    updateTrip({ ...trip, itinerary: filtered });
-
-    setUndoDay({ day: dayToDelete, index });
-
-    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
-    undoTimeoutRef.current = setTimeout(() => setUndoDay(null), 5000);
-  };
-
-  const undoDeleteDay = () => {
-    if (!undoDay) return;
-    const restored = [...trip.itinerary];
-    restored.splice(undoDay.index, 0, undoDay.day);
-    updateTrip({ ...trip, itinerary: restored });
-    setActiveDayId(undoDay.day.id);
-    setUndoDay(null);
-    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
-  };
-
-  const dismissUndo = () => {
-    setUndoDay(null);
-    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
-  };
-
   const handleDateChange = (dateStr: string) => {
     dismissUndo();
     if (!activeDayId || !dateStr) return;
@@ -141,28 +198,18 @@ export default function ItineraryTab({ trip, updateTrip }: Props) {
       day.id === activeDayId ? { ...day, date: dateStr } : day
     );
     updateTrip({ ...trip, itinerary: updatedItinerary });
-    setIsEditingDate(false);
   };
 
   const handleAddActivity = (time: string, title: string, location?: string, lat?: number, lng?: number) => {
     dismissUndo();
     if (!activeDayId) return;
 
-    const newActivity: Activity = {
-      id: crypto.randomUUID(),
-      title,
-      time,
-      location,
-      lat,
-      lng,
-    };
-
+    const newActivity: Activity = { id: crypto.randomUUID(), title, time, location, lat, lng };
     const updatedItinerary = trip.itinerary.map(day =>
       day.id === activeDayId
         ? { ...day, activities: sortByTime([...day.activities, newActivity]) }
         : day
     );
-
     updateTrip({ ...trip, itinerary: updatedItinerary });
     triggerDopamine();
     setIsAdding(false);
@@ -186,7 +233,7 @@ export default function ItineraryTab({ trip, updateTrip }: Props) {
         {trip.itinerary.map((day) => (
           <button
             key={day.id}
-            onClick={() => { setActiveDayId(day.id); setIsMapOpen(false); setIsEditingDate(false); }}
+            onClick={() => { setActiveDayId(day.id); setIsMapOpen(false); }}
             className={`whitespace-nowrap px-6 py-3 rounded-2xl font-display font-bold text-sm transition-all shadow-sm shrink-0 snap-start ${
               activeDayId === day.id ? "bg-pastel-pink text-white" : "bg-white text-ink-light border-2 border-pastel-cream"
             }`}
@@ -201,47 +248,18 @@ export default function ItineraryTab({ trip, updateTrip }: Props) {
 
       {activeDay && (
         <div className="flex flex-col w-full">
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-2">
-              {isEditingDate ? (
-                <input
-                  type="date"
-                  value={activeDay.date || ''}
-                  onChange={e => handleDateChange(e.target.value)}
-                  onBlur={() => setIsEditingDate(false)}
-                  className="bg-pastel-cream px-3 py-1.5 rounded-xl text-xs font-sans font-bold outline-none focus:ring-2 ring-pastel-pink/50 text-ink"
-                  autoFocus
-                />
-              ) : (
-                <button
-                  onClick={() => setIsEditingDate(true)}
-                  className="flex items-center gap-1.5 text-xs text-ink-light font-sans hover:text-pastel-pink transition-colors py-1"
-                >
-                  <Calendar className="w-3.5 h-3.5" />
-                  {activeDay.date
-                    ? formatDateFull(activeDay.date, lang)
-                    : activeDay.dateLabel}
-                  <Pencil className="w-3 h-3" />
-                </button>
-              )}
-            </div>
-            {trip.itinerary.length > 1 && (
-              <button
-                onClick={() => handleDeleteDay(activeDay.id)}
-                className="flex items-center gap-1 text-xs font-bold text-ink-light hover:text-red-400 transition-colors py-1 px-2 rounded-lg"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                {t('deleteDay')}
-              </button>
-            )}
-          </div>
+          <DayHeader
+            day={activeDay}
+            canDelete={trip.itinerary.length > 1}
+            onDateChange={handleDateChange}
+            onDelete={() => scheduleDelete(activeDay.id)}
+            t={t}
+            lang={lang}
+          />
 
           {locatedCount > 0 && (
             <div className="mb-3">
-              <button
-                onClick={() => setIsMapOpen(!isMapOpen)}
-                className="w-full flex items-center justify-between bg-white px-4 py-2.5 rounded-2xl border-2 border-pastel-cream shadow-sm hover:border-pastel-pink/30 transition-colors"
-              >
+              <button onClick={() => setIsMapOpen(!isMapOpen)} className="w-full flex items-center justify-between bg-white px-4 py-2.5 rounded-2xl border-2 border-pastel-cream shadow-sm hover:border-pastel-pink/30 transition-colors">
                 <span className="font-sans font-bold text-xs text-ink-light">{t('mapStops', { count: locatedCount })}</span>
                 <ChevronDown className={`w-4 h-4 text-ink-light transition-transform duration-200 ${isMapOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -289,10 +307,7 @@ export default function ItineraryTab({ trip, updateTrip }: Props) {
                           <div className="flex items-center justify-between gap-2 mt-0.5">
                             <p className="font-sans text-xs text-ink-light truncate flex-1">{act.location}</p>
                             {act.lat !== undefined && act.lng !== undefined && (
-                              <button
-                                onClick={() => openDirections(act.lat!, act.lng!)}
-                                className="flex items-center gap-1 text-xs font-bold text-pastel-pink hover:text-ink-light transition-colors bg-pastel-pink/10 px-2.5 py-1 rounded-full shrink-0"
-                              >
+                              <button onClick={() => openDirections(act.lat!, act.lng!)} className="flex items-center gap-1 text-xs font-bold text-pastel-pink hover:text-ink-light transition-colors bg-pastel-pink/10 px-2.5 py-1 rounded-full shrink-0">
                                 <Navigation className="w-3 h-3" />
                                 {t('directions')}
                               </button>
@@ -312,36 +327,13 @@ export default function ItineraryTab({ trip, updateTrip }: Props) {
               <Plus className="w-5 h-5" /> {t('addPlan')}
             </button>
           ) : (
-            <ActivityForm
-              onSave={handleAddActivity}
-              onCancel={() => setIsAdding(false)}
-              t={t}
-            />
+            <ActivityForm onSave={handleAddActivity} onCancel={() => setIsAdding(false)} t={t} />
           )}
         </div>
       )}
 
       <AnimatePresence>
-        {undoDay && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-ink text-white px-5 py-3 rounded-2xl shadow-lg flex items-center gap-3 font-sans text-sm"
-          >
-            <span>{t('dayDeleted')}</span>
-            <button
-              onClick={undoDeleteDay}
-              className="flex items-center gap-1 font-bold text-pastel-yellow hover:text-pastel-mint transition-colors"
-            >
-              <Undo2 className="w-3.5 h-3.5" />
-              {t('undo')}
-            </button>
-            <button onClick={dismissUndo} className="text-white/40 hover:text-white/70 transition-colors ml-1">
-              <Plus className="w-4 h-4 rotate-45" />
-            </button>
-          </motion.div>
-        )}
+        {undoDay && <UndoToast onUndo={undo} onDismiss={dismissUndo} t={t} />}
       </AnimatePresence>
     </div>
   );
