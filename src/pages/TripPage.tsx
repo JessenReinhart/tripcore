@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Map, Loader2, AlertTriangle } from "lucide-react";
@@ -14,7 +14,6 @@ import TripTitle from "../components/TripTitle";
 import TripTabBar from "../components/TripTabBar";
 import { triggerCelebration } from "../lib/confetti";
 import { useLanguage } from "../lib/i18n";
-import { saveTrip } from "../lib/firebase";
 import { usePwaInstall } from "../hooks/usePwaInstall";
 import { useShare } from "../hooks/useShare";
 import { useTripSubscription } from "../hooks/useTripSubscription";
@@ -29,7 +28,7 @@ export default function TripPage() {
 
   const { t } = useLanguage();
   const { deferredPrompt, handleInstallClick } = usePwaInstall();
-  const { resolvedTripId, trip, firebaseUid, loading, error } = useTripSubscription(tripId, state?.slug, t);
+  const { resolvedTripId, trip, firebaseUid, loading, error, updateTripOptimistic } = useTripSubscription(tripId, state?.slug, t);
   const {
     currentUser,
     isNameModalOpen,
@@ -37,20 +36,13 @@ export default function TripPage() {
     handleNameJoin,
     handleReclaimMember,
     handleNewMemberFromPicker,
-  } = useTripIdentity(trip, firebaseUid, resolvedTripId);
+  } = useTripIdentity(trip, firebaseUid, resolvedTripId, updateTripOptimistic);
   const { isCopied, handleShare } = useShare(trip, t);
 
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState("");
-
-  const updateTrip = useCallback((updatedTrip: typeof trip) => {
-    if (!resolvedTripId || !updatedTrip) return;
-    saveTrip(resolvedTripId, updatedTrip).catch((err) => {
-      console.error("Failed to update trip:", err);
-    });
-  }, [resolvedTripId]);
 
   const handleNameJoinWithOnboarding = async (name: string, pin: string) => {
     await handleNameJoin(name, pin);
@@ -64,7 +56,7 @@ export default function TripPage() {
 
   const handleSaveTitle = () => {
     if (trip && titleInput.trim() && titleInput !== trip.title) {
-      updateTrip({ ...trip, title: titleInput.trim() });
+      updateTripOptimistic({ ...trip, title: titleInput.trim() });
     }
     setIsEditingTitle(false);
   };
@@ -131,10 +123,10 @@ export default function TripPage() {
             exit={{ opacity: 0, scale: 0.95, y: -15, filter: "blur(4px)" }}
             transition={{ type: "spring", stiffness: 350, damping: 25, mass: 0.8 }}
           >
-            {activeTab === "dashboard" && <DashboardTab trip={trip} updateTrip={updateTrip} currentUser={currentUser} />}
-            {activeTab === "split" && <ExpensesTab trip={trip} updateTrip={updateTrip} currentUser={currentUser} />}
-            {activeTab === "itinerary" && <ItineraryTab trip={trip} updateTrip={updateTrip} />}
-            {activeTab === "checklist" && <ChecklistTab trip={trip} updateTrip={updateTrip} currentUser={currentUser} />}
+            {activeTab === "dashboard" && <DashboardTab trip={trip} updateTrip={updateTripOptimistic} currentUser={currentUser} />}
+            {activeTab === "split" && <ExpensesTab trip={trip} updateTrip={updateTripOptimistic} currentUser={currentUser} />}
+            {activeTab === "itinerary" && <ItineraryTab trip={trip} updateTrip={updateTripOptimistic} />}
+            {activeTab === "checklist" && <ChecklistTab trip={trip} updateTrip={updateTripOptimistic} currentUser={currentUser} />}
           </motion.div>
         </AnimatePresence>
 

@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { Trip, Member } from "../types";
-import { saveTrip } from "../lib/firebase";
+import { Trip, Member, type TripUpdateFn } from "../types";
 import { hashPin } from "../lib/crypto";
 
 export function useTripIdentity(
   trip: Trip | null,
   firebaseUid: string | null,
   resolvedTripId: string | null,
+  updateTripOptimistic: TripUpdateFn,
 ) {
   const [currentUser, setCurrentUser] = useState<Member | null>(null);
   const [isNameModalOpen, setIsNameModalOpen] = useState(false);
@@ -47,11 +47,9 @@ export function useTripIdentity(
       pinHash: pinHashStr,
     };
     localStorage.setItem(`trip_user_${resolvedTripId}`, newMember.id);
-    saveTrip(resolvedTripId, { ...trip, members: [...trip.members, newMember] }).catch((err) => {
-      console.error("Failed to save new member:", err);
-    });
+    updateTripOptimistic({ ...trip, members: [...trip.members, newMember] });
     setIsNameModalOpen(false);
-  }, [trip, resolvedTripId, firebaseUid]);
+  }, [trip, resolvedTripId, firebaseUid, updateTripOptimistic]);
 
   const handleReclaimMember = useCallback((member: Member, upgradedPinHash?: string) => {
     if (!trip || !resolvedTripId || !firebaseUid) return;
@@ -62,11 +60,9 @@ export function useTripIdentity(
       return { ...m, ...updates };
     });
     localStorage.setItem(`trip_user_${resolvedTripId}`, member.id);
-    saveTrip(resolvedTripId, { ...trip, members: updatedMembers }).catch((err) => {
-      console.error("Failed to reclaim member:", err);
-    });
+    updateTripOptimistic({ ...trip, members: updatedMembers });
     setIsMemberPickerOpen(false);
-  }, [trip, resolvedTripId, firebaseUid]);
+  }, [trip, resolvedTripId, firebaseUid, updateTripOptimistic]);
 
   const handleNewMemberFromPicker = useCallback(() => {
     setIsMemberPickerOpen(false);

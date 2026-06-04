@@ -55,3 +55,5 @@ export type Trip = {
   checklist: ChecklistItem[];
   createdAt: number;
 };
+
+export type TripUpdateFn = (updatedTrip: Trip) => void;
