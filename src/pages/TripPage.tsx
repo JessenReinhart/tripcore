@@ -47,7 +47,9 @@ export default function TripPage() {
 
   const updateTrip = useCallback((updatedTrip: typeof trip) => {
     if (!resolvedTripId || !updatedTrip) return;
-    saveTrip(resolvedTripId, updatedTrip);
+    saveTrip(resolvedTripId, updatedTrip).catch((err) => {
+      console.error("Failed to update trip:", err);
+    });
   }, [resolvedTripId]);
 
   const handleNameJoinWithOnboarding = async (name: string, pin: string) => {

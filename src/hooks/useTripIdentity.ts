@@ -47,7 +47,9 @@ export function useTripIdentity(
       pinHash: pinHashStr,
     };
     localStorage.setItem(`trip_user_${resolvedTripId}`, newMember.id);
-    saveTrip(resolvedTripId, { ...trip, members: [...trip.members, newMember] });
+    saveTrip(resolvedTripId, { ...trip, members: [...trip.members, newMember] }).catch((err) => {
+      console.error("Failed to save new member:", err);
+    });
     setIsNameModalOpen(false);
   }, [trip, resolvedTripId, firebaseUid]);
 
@@ -60,7 +62,9 @@ export function useTripIdentity(
       return { ...m, ...updates };
     });
     localStorage.setItem(`trip_user_${resolvedTripId}`, member.id);
-    saveTrip(resolvedTripId, { ...trip, members: updatedMembers });
+    saveTrip(resolvedTripId, { ...trip, members: updatedMembers }).catch((err) => {
+      console.error("Failed to reclaim member:", err);
+    });
     setIsMemberPickerOpen(false);
   }, [trip, resolvedTripId, firebaseUid]);
 

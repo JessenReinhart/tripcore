@@ -76,6 +76,7 @@ export function subscribeToTrip(
 
 /** Write the full trip document to Firestore. Derives memberUids for security rules. */
 export async function saveTrip(tripId: string, trip: Trip): Promise<void> {
+  await ensureAuth();
   const memberUids = trip.members.map((m) => m.firebaseUid).filter(Boolean) as string[];
   const tripRef = doc(db, 'trips', tripId);
   await setDoc(tripRef, { ...trip, memberUids }, { merge: true });
@@ -83,6 +84,7 @@ export async function saveTrip(tripId: string, trip: Trip): Promise<void> {
 
 /** Check if a slug is already taken by another trip. */
 export async function checkSlugAvailable(slug: string, excludeTripId?: string): Promise<boolean> {
+  await ensureAuth();
   const q = query(collection(db, 'trips'), where('slug', '==', slug), limit(1));
   const snapshot = await getDocs(q);
   if (snapshot.empty) return true;
@@ -97,6 +99,7 @@ export async function checkSlugAvailable(slug: string, excludeTripId?: string): 
  * Returns the trip ID if found, null otherwise.
  */
 export async function resolveSlug(slug: string): Promise<string | null> {
+  await ensureAuth();
   const q = query(collection(db, 'trips'), where('slug', '==', slug), limit(1));
   const snapshot = await getDocs(q);
   if (snapshot.empty) return null;
