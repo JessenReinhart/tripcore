@@ -17,6 +17,7 @@ export type Expense = {
   splitBetween: string[]; // Member IDs
   category: ExpenseCategory;
   date: number;
+  paidFromKas: boolean;
 };
 
 export type Activity = {
