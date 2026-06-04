@@ -7,7 +7,7 @@ import { triggerDopamine, triggerCelebration } from "../../lib/confetti";
 import { useLanguage } from "../../lib/i18n";
 import DepositModal from "./DepositModal";
 import MemberCard from "./MemberCard";
-import { computeBalances, computeKasDeductions, totalKasSpent } from "./expenseConstants";
+import { computeBalances, computeKasDeductions, totalKasSpent } from "./expenseCalculations";
 
 type Props = {
   trip: Trip;

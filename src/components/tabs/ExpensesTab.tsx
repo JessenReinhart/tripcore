@@ -6,7 +6,8 @@ import { cn } from "../../lib/utils";
 import { triggerDopamine } from "../../lib/confetti";
 import { useLanguage } from "../../lib/i18n";
 import ExpenseForm from "./ExpenseForm";
-import { CATEGORY_ICONS, computeBalances } from "./expenseConstants";
+import { CATEGORY_ICONS } from "./expenseConstants";
+import { computeBalances } from "./expenseCalculations";
 
 type Props = {
   trip: Trip;

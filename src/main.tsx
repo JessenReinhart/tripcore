@@ -7,6 +7,7 @@ import { LanguageProvider } from './lib/i18n.tsx';
 import './index.css';
 import { registerSW } from 'virtual:pwa-register';
 
+import 'leaflet/dist/leaflet.css';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
