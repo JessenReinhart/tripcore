@@ -77,7 +77,7 @@ export function useTripSubscription(
               members: [],
               expenses: [],
               itinerary: [
-                { id: crypto.randomUUID(), dateLabel: t("dayLabel", { number: 1 }), activities: [] },
+                { id: crypto.randomUUID(), dateLabel: t("dayLabel", { number: 1 }), date: (() => { const d = new Date(); const pad = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; })(), activities: [] },
               ],
               checklist: [],
               createdAt: Date.now(),

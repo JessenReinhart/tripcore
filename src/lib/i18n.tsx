@@ -110,6 +110,10 @@ const translations = {
     noLocationsOnMap: "No plans have locations set. Add locations to see them on the map!",
     directions: "Directions",
     mapStops: "Map · {count} stops",
+    editDate: "Edit date",
+    deleteDay: "Delete day",
+    dayDeleted: "Day deleted",
+    undo: "Undo",
 
     // ChecklistTab
     groupChecklist: "Group Checklist",
@@ -247,6 +251,10 @@ const translations = {
     noLocationsOnMap: "Belom ada plan dengan lokasi. Tambahin lokasi biar keliatan di peta!",
     directions: "Petunjuk",
     mapStops: "Peta · {count} titik",
+    editDate: "Ubah tanggal",
+    deleteDay: "Hapus hari",
+    dayDeleted: "Hari dihapus",
+    undo: "Batal",
 
     // ChecklistTab
     groupChecklist: "Checklist Bawaan",

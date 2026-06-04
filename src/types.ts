@@ -33,6 +33,7 @@ export type Activity = {
 export type ItineraryDay = {
   id: string;
   dateLabel: string;
+  date?: string; // YYYY-MM-DD
   activities: Activity[];
 };
 
