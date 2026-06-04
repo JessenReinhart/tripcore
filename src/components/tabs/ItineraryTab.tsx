@@ -1,10 +1,11 @@
 import { Trip, ItineraryDay, Activity } from "../../types";
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Clock, Calendar, Trash2 } from "lucide-react";
+import { Plus, Clock, Calendar, Trash2, ChevronDown, Navigation } from "lucide-react";
 import { triggerDopamine } from "../../lib/confetti";
 import { useLanguage } from "../../lib/i18n";
 import ActivityForm from "./ActivityForm";
+import ItineraryMapView from "./ItineraryMapView";
 
 type Props = {
   trip: Trip;
@@ -14,10 +15,30 @@ type Props = {
 const sortByTime = (activities: Activity[]) =>
   [...activities].sort((a, b) => a.time.localeCompare(b.time));
 
+function openDirections(destLat: number, destLng: number) {
+  const destUrl = `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`;
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const url = `https://www.google.com/maps/dir/?api=1&origin=${pos.coords.latitude},${pos.coords.longitude}&destination=${destLat},${destLng}&travelmode=driving`;
+        window.open(url, '_blank');
+      },
+      () => {
+        window.open(destUrl, '_blank');
+      },
+      { timeout: 5000 }
+    );
+  } else {
+    window.open(destUrl, '_blank');
+  }
+}
+
 export default function ItineraryTab({ trip, updateTrip }: Props) {
   const { t } = useLanguage();
   const [activeDayId, setActiveDayId] = useState<string | null>(trip.itinerary[0]?.id || null);
   const [isAdding, setIsAdding] = useState(false);
+  const [isMapOpen, setIsMapOpen] = useState(false);
 
   const handleAddDay = () => {
     const newDay: ItineraryDay = {
@@ -29,10 +50,17 @@ export default function ItineraryTab({ trip, updateTrip }: Props) {
     setActiveDayId(newDay.id);
   };
 
-  const handleAddActivity = (time: string, title: string) => {
+  const handleAddActivity = (time: string, title: string, location?: string, lat?: number, lng?: number) => {
     if (!activeDayId) return;
 
-    const newActivity: Activity = { id: crypto.randomUUID(), title, time };
+    const newActivity: Activity = {
+      id: crypto.randomUUID(),
+      title,
+      time,
+      location,
+      lat,
+      lng,
+    };
 
     const updatedItinerary = trip.itinerary.map(day =>
       day.id === activeDayId
@@ -55,6 +83,7 @@ export default function ItineraryTab({ trip, updateTrip }: Props) {
   };
 
   const activeDay = trip.itinerary.find(d => d.id === activeDayId);
+  const locatedCount = activeDay?.activities.filter(a => a.lat !== undefined && a.lng !== undefined).length ?? 0;
 
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-500 pb-12">
@@ -62,7 +91,7 @@ export default function ItineraryTab({ trip, updateTrip }: Props) {
         {trip.itinerary.map((day) => (
           <button
             key={day.id}
-            onClick={() => setActiveDayId(day.id)}
+            onClick={() => { setActiveDayId(day.id); setIsMapOpen(false); }}
             className={`whitespace-nowrap px-6 py-3 rounded-2xl font-display font-bold text-sm transition-all shadow-sm shrink-0 snap-start ${
               activeDayId === day.id ? "bg-pastel-pink text-white" : "bg-white text-ink-light border-2 border-pastel-cream"
             }`}
@@ -76,7 +105,27 @@ export default function ItineraryTab({ trip, updateTrip }: Props) {
       </div>
 
       {activeDay && (
-        <div className="flex flex-col mt-2 w-full">
+        <div className="flex flex-col w-full">
+          {locatedCount > 0 && (
+            <div className="mb-3">
+              <button
+                onClick={() => setIsMapOpen(!isMapOpen)}
+                className="w-full flex items-center justify-between bg-white px-4 py-2.5 rounded-2xl border-2 border-pastel-cream shadow-sm hover:border-pastel-pink/30 transition-colors"
+              >
+                <span className="font-sans font-bold text-xs text-ink-light">{t('mapStops', { count: locatedCount })}</span>
+                <ChevronDown className={`w-4 h-4 text-ink-light transition-transform duration-200 ${isMapOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {isMapOpen && (
+                <div className="mt-2">
+                  <ItineraryMapView
+                    activities={activeDay.activities}
+                    dayLabel={activeDay.dateLabel}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           {activeDay.activities.length === 0 ? (
             <div className="bg-white p-6 rounded-3xl border-2 border-dashed border-pastel-cream text-center text-ink-light font-sans text-sm pb-10 flex flex-col items-center justify-center gap-3 mt-2">
               <div className="w-14 h-14 bg-pastel-cream/50 rounded-full flex items-center justify-center mb-1">
@@ -106,6 +155,20 @@ export default function ItineraryTab({ trip, updateTrip }: Props) {
                           </button>
                         </div>
                         <p className="font-sans font-bold text-ink text-[15px] sm:text-base break-words pr-2">{act.title}</p>
+                        {act.location && (
+                          <div className="flex items-center justify-between gap-2 mt-0.5">
+                            <p className="font-sans text-xs text-ink-light truncate flex-1">{act.location}</p>
+                            {act.lat !== undefined && act.lng !== undefined && (
+                              <button
+                                onClick={() => openDirections(act.lat!, act.lng!)}
+                                className="flex items-center gap-1 text-xs font-bold text-pastel-pink hover:text-ink-light transition-colors bg-pastel-pink/10 px-2.5 py-1 rounded-full shrink-0"
+                              >
+                                <Navigation className="w-3 h-3" />
+                                {t('directions')}
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </motion.div>
                   ))}

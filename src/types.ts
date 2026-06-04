@@ -25,6 +25,9 @@ export type Activity = {
   time: string;
   title: string;
   description?: string;
+  location?: string;
+  lat?: number;
+  lng?: number;
 };
 
 export type ItineraryDay = {

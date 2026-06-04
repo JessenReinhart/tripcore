@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400..800;1,400..800&family=Quicksand:wght@400..700&display=swap');
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 @theme {
   --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
@@ -19,4 +20,19 @@ body {
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.leaflet-container {
+  width: 100%;
+  border-radius: 1.5rem;
+  z-index: 0;
+}
+
+.leaflet-pane {
+  z-index: 1;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 2;
 }

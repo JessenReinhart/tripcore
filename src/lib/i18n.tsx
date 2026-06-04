@@ -103,6 +103,13 @@ const translations = {
     newPlanTitle: "New Plan",
     planPlaceholder: "e.g. Flight QR908",
     addToTimeline: "Add to Timeline",
+    locationPlaceholder: "e.g. Ubud Monkey Forest",
+    searchLocation: "Search for a place...",
+    searchingLocation: "Finding location...",
+    noLocationResults: "No places found",
+    noLocationsOnMap: "No plans have locations set. Add locations to see them on the map!",
+    directions: "Directions",
+    mapStops: "Map · {count} stops",
 
     // ChecklistTab
     groupChecklist: "Group Checklist",
@@ -233,6 +240,13 @@ const translations = {
     newPlanTitle: "Plan Baru",
     planPlaceholder: "ex: Ke Beach Club 🏖️",
     addToTimeline: "Masukin Timeline",
+    locationPlaceholder: "ex: Pantai Kuta",
+    searchLocation: "Cari tempat...",
+    searchingLocation: "Mencari lokasi...",
+    noLocationResults: "Ga ketemu tempatnya",
+    noLocationsOnMap: "Belom ada plan dengan lokasi. Tambahin lokasi biar keliatan di peta!",
+    directions: "Petunjuk",
+    mapStops: "Peta · {count} titik",
 
     // ChecklistTab
     groupChecklist: "Checklist Bawaan",
