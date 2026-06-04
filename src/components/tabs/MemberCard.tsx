@@ -7,13 +7,16 @@ interface Props {
   key?: string;
   member: Member;
   savingTarget: number;
+  effectiveKasBalance: number;
   isCurrentUser: boolean;
   onDeposit: (member: Member) => void;
   youLabel: string;
   depositLabel: string;
+  kasBalanceLabel: string;
+  kasExceededLabel: string;
 }
 
-export default function MemberCard({ member, savingTarget, isCurrentUser, onDeposit, youLabel, depositLabel }: Props) {
+export default function MemberCard({ member, savingTarget, effectiveKasBalance, isCurrentUser, onDeposit, youLabel, depositLabel, kasBalanceLabel, kasExceededLabel }: Props) {
   const prog = Math.min((member.totalContributed / savingTarget) * 100, 100);
   const isGoalMet = member.totalContributed >= savingTarget;
 
@@ -47,6 +50,17 @@ export default function MemberCard({ member, savingTarget, isCurrentUser, onDepo
       </div>
       <div className="z-10 relative">
         <p className="font-display font-bold text-ink text-sm">Rp {member.totalContributed.toLocaleString()}</p>
+      </div>
+
+      <div className="flex items-center justify-between z-10 relative">
+        <p className={cn("font-sans text-xs", effectiveKasBalance < 0 ? "text-pastel-pink font-bold" : "text-ink-light")}>
+          {kasBalanceLabel}: Rp {Math.round(effectiveKasBalance).toLocaleString()}
+        </p>
+        {effectiveKasBalance < 0 && (
+          <span className="text-[10px] font-bold text-pastel-pink bg-pastel-pink/10 px-2 py-0.5 rounded-full animate-pulse">
+            {kasExceededLabel}
+          </span>
+        )}
       </div>
 
       {isGoalMet && <div className="absolute inset-0 bg-pastel-mint/10 pointer-events-none" />}

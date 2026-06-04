@@ -1,6 +1,6 @@
 # TERAX.md — Tripcore
 
-A mobile-first, collaborative group trip planner PWA built with React 19, Vite, TypeScript, and Tailwind CSS v4. No accounts — anonymous Firebase Auth + Firestore for real-time cross-device sync with offline persistence. The app covers pooled-fund tracking, bill splitting with automatic debt settlement, day-by-day itineraries, and shared checklists. Bilingual (EN/ID) via a React context provider, with playful pastel UI animated by Motion.
+A mobile-first, collaborative group trip planner PWA built with React 19, Vite, TypeScript, and Tailwind CSS v4. No accounts — anonymous Firebase Auth + Firestore for real-time cross-device sync with offline persistence. The app covers pooled-fund tracking with remaining-balance monitoring, dual-mode expense logging (shared-pool withdrawals + personal IOUs), day-by-day itineraries, and shared checklists. Bilingual (EN/ID) via a React context provider, with playful pastel UI animated by Motion.
 
 ## Build / Test
 
@@ -38,8 +38,9 @@ src/
     ├── MemberPickerModal.tsx # Reclaim existing identity by selecting member + entering PIN
     ├── OnboardingModal.tsx  # 4-step feature intro carousel, highlights bottom nav tabs
     └── tabs/
-        ├── DashboardTab.tsx # Treasury overview, savings goal, per-member deposits ("Kas")
-        ├── ExpensesTab.tsx  # Add/view expenses + auto "who owes whom" settlement
+        ├── DashboardTab.tsx # Treasury overview, savings goal, per-member deposits + kas balance ("Kas")
+        ├── ExpensesTab.tsx  # Dual-mode expenses (kas pool / personal IOUs) + settlements
+        ├── ExpenseForm.tsx  # Add expense with kas/personal toggle
         ├── ItineraryTab.tsx # Day-by-day timeline with activities
         └── ChecklistTab.tsx # Shared to-do/packing list
 ```
@@ -70,7 +71,7 @@ src/
 | Type | Fields |
 |------|--------|
 | `Member` | id, name, hasPaidDeposit? (legacy), totalContributed, firebaseUid?, pinHash? |
-| `Expense` | id, title, amount, paidBy, splitBetween[], category (Food\|Transport\|Lodging\|Fun\|Other), date |
+| `Expense` | id, title, amount, paidBy, splitBetween[], category (Food\|Transport\|Lodging\|Fun\|Other), date, paidFromKas |
 | `Activity` | id, time, title, description? |
 | `ItineraryDay` | id, dateLabel, activities[] |
 | `ChecklistItem` | id, text, isCompleted, completedBy? |

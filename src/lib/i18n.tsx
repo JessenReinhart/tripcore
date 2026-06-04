@@ -69,6 +69,10 @@ const translations = {
     loggingDepositFor: "Logging deposit for",
     logDepositBtn: "Log Deposit ✨",
     deposit: "Deposit",
+    spentFromKas: "Spent from Kas",
+    remainingKas: "Remaining Kas",
+    kasBalance: "Kas Balance",
+    kasExceeded: "Exceeded!",
 
     // ExpensesTab
     addNewExpense: "Add New Expense",
@@ -85,6 +89,13 @@ const translations = {
     noExpensesYet: "No expenses yet. Add one above!",
     paidByText: "Paid by",
     splitText: "SPLIT",
+    expenseModeLabel: "Payment Source",
+    fromKas: "From Kas",
+    personalExpense: "Personal",
+    swipedBy: "Swiped by",
+    kasBadge: "KAS",
+    personalBadge: "SPLIT",
+    deleteExpense: "Delete",
 
     // ItineraryTab
     noPlansYet: "No plans yet for",
@@ -107,7 +118,7 @@ const translations = {
     onb1Title: "Pool Your Funds 💰",
     onb1Desc: "Track group deposits and see your trip's savings progress.",
     onb2Title: "Split the Bill 🧾",
-    onb2Desc: "Log expenses and let math do the rest automatically.",
+    onb2Desc: "Log expenses from the shared pool or track personal IOUs. Math does the rest!",
     onb3Title: "Shared Itinerary 🗺️",
     onb3Desc: "Build a shared timeline so everyone knows the plan.",
     onb4Title: "Pack Together ✅",
@@ -188,6 +199,10 @@ const translations = {
     loggingDepositFor: "Masukin duit kas buat",
     logDepositBtn: "Catet Kas ✨",
     deposit: "Setor",
+    spentFromKas: "Keluar dari Kas",
+    remainingKas: "Sisa Kas",
+    kasBalance: "Saldo Kas",
+    kasExceeded: "Kas minus!",
 
     // ExpensesTab
     addNewExpense: "Tambah Pengeluaran",
@@ -204,6 +219,13 @@ const translations = {
     noExpensesYet: "Belom ada pengeluaran. Jangan lupa dicatet ya!",
     paidByText: "Ditalangin",
     splitText: "DIBAGI",
+    expenseModeLabel: "Sumber Bayar",
+    fromKas: "Dari Kas",
+    personalExpense: "Bayar Sendiri",
+    swipedBy: "Digesek oleh",
+    kasBadge: "KAS",
+    personalBadge: "SPLIT",
+    deleteExpense: "Hapus",
 
     // ItineraryTab
     noPlansYet: "Belom ada plan nih buat",
@@ -226,7 +248,7 @@ const translations = {
     onb1Title: "Kumpulin Duit Kas 💰",
     onb1Desc: "Pantau kas grup dan progress nabung kalian biar ga ada ngaret.",
     onb2Title: "Bagi Tagihan 🧾",
-    onb2Desc: "Catet pengeluaran, ntar ketauan siapa ngutang siapa. Ga pake ribut!",
+    onb2Desc: "Catet pengeluaran dari kas bareng atau utang pribadi. Biar ga pake ribut!",
     onb3Title: "Itinerary Bareng 🗺️",
     onb3Desc: "Bikin timeline santai bareng biar semua tau hari ini mau ngapain aja.",
     onb4Title: "Packing Bareng ✅",

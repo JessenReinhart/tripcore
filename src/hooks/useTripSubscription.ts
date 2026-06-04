@@ -63,6 +63,10 @@ export function useTripSubscription(
               ...m,
               totalContributed: m.totalContributed || 0,
             }));
+            migrated.expenses = migrated.expenses.map((exp) => ({
+              ...exp,
+              paidFromKas: exp.paidFromKas ?? false,
+            }));
             setTrip(migrated);
           } else {
             const newTrip: Trip = {

@@ -19,11 +19,12 @@ export default function ExpenseForm({ trip, currentUserId, onSave, onCancel, t }
   const [category, setCategory] = useState<ExpenseCategory>("Food");
   const [paidBy, setPaidBy] = useState<string>(currentUserId || "");
   const [splitBetween, setSplitBetween] = useState<string[]>(trip.members.map(m => m.id));
+  const [paidFromKas, setPaidFromKas] = useState<boolean>(true);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !amount || !paidBy || splitBetween.length === 0) return;
-    onSave({ title, amount: parseFloat(amount), category, paidBy, splitBetween });
+    onSave({ title, amount: parseFloat(amount), category, paidBy, splitBetween, paidFromKas });
     setTitle("");
     setAmount("");
   };
@@ -75,7 +76,27 @@ export default function ExpenseForm({ trip, currentUserId, onSave, onCancel, t }
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-bold text-ink-light px-1">{t('paidBy')}</label>
+        <label className="text-xs font-bold text-ink-light px-1">{t('expenseModeLabel')}</label>
+        <div className="flex bg-pastel-cream rounded-xl p-1">
+          <button
+            type="button"
+            onClick={() => setPaidFromKas(true)}
+            className={cn("flex-1 py-2 rounded-lg text-sm font-bold transition-all", paidFromKas ? "bg-pastel-mint text-ink shadow-sm" : "bg-transparent text-ink-light")}
+          >
+            {t('fromKas')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setPaidFromKas(false)}
+            className={cn("flex-1 py-2 rounded-lg text-sm font-bold transition-all", !paidFromKas ? "bg-pastel-pink text-white shadow-sm" : "bg-transparent text-ink-light")}
+          >
+            {t('personalExpense')}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-bold text-ink-light px-1">{paidFromKas ? t('swipedBy') : t('paidBy')}</label>
         <select className="w-full bg-pastel-cream border-none px-4 py-3 rounded-xl font-sans focus:ring-2 outline-none appearance-none font-medium" value={paidBy} onChange={(e) => setPaidBy(e.target.value)} required>
           <option value="" disabled>{t('selectMember')}</option>
           {trip.members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}

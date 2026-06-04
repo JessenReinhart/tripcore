@@ -4,8 +4,8 @@ A delightful, mobile-first group trip planner PWA. Split bills, plan itineraries
 
 ## ✨ Features
 
-- **📊 Dashboard (Kas):** Bird's-eye view of trip finances. Track pooled funds, total spending, and auto-calculated "who owes whom" settlement.
-- **🧾 Split Bills:** Log group expenses with categories, paid-by, and split-between members. Automatic debt settlement algorithm.
+- **📊 Dashboard (Kas):** Bird's-eye view of trip finances. Track pooled funds, per-member balances, and remaining budget so you never overspend.
+- **🧾 Smart Expenses:** Two modes — **From Kas** for shared-pool spending (auto-deducts from balances) and **Personal** for one-off IOUs when someone fronts the bill. Auto-settlement for personal debts.
 - **📅 Itinerary Guide:** Day-by-day timeline with time-sorted activities. Add/remove days and plans.
 - **✅ Group Checklist:** Shared packing and to-do list. Mark items complete, see who packed what, clear done items.
 - **🌏 Bilingual:** Toggle between English and Indonesian (EN/ID) — persistent preference.

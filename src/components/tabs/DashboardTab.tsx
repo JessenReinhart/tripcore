@@ -2,11 +2,12 @@ import { useState, type FormEvent } from "react";
 import { Trip, Member } from "../../types";
 import { TrendingUp, Target } from "lucide-react";
 import { motion } from "motion/react";
+import { cn } from "../../lib/utils";
 import { triggerDopamine, triggerCelebration } from "../../lib/confetti";
 import { useLanguage } from "../../lib/i18n";
 import DepositModal from "./DepositModal";
 import MemberCard from "./MemberCard";
-import { computeBalances } from "./expenseConstants";
+import { computeBalances, computeKasDeductions, totalKasSpent } from "./expenseConstants";
 
 type Props = {
   trip: Trip;
@@ -28,8 +29,10 @@ export default function DashboardTab({ trip, updateTrip, currentUser }: Props) {
   const [isEditingTarget, setIsEditingTarget] = useState(false);
   const [targetInput, setTargetInput] = useState(trip.savingTargetPerMember.toString());
 
-  const totalSpent = trip.expenses.reduce((acc, exp) => acc + exp.amount, 0);
   const totalPooled = trip.members.reduce((acc, m) => acc + m.totalContributed, 0);
+  const kasSpentFromPool = totalKasSpent(trip);
+  const kasRemaining = totalPooled - kasSpentFromPool;
+  const kasDeductions = computeKasDeductions(trip);
   const totalTarget = trip.members.length * trip.savingTargetPerMember;
   const poolProgress = totalTarget > 0 ? Math.min((totalPooled / totalTarget) * 100, 100) : 0;
   const owedList = calculateOwes(trip);
@@ -72,9 +75,16 @@ export default function DashboardTab({ trip, updateTrip, currentUser }: Props) {
             <p className="font-display font-bold text-xl lg:text-2xl text-ink">{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(totalPooled)}</p>
           </div>
           <div className="flex-1 bg-pastel-cream p-4 rounded-2xl">
-            <p className="text-xs font-sans text-ink-light uppercase font-bold tracking-widest mb-1">{t('totalSpent')}</p>
-            <p className="font-display font-bold text-xl lg:text-2xl text-ink">{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(totalSpent)}</p>
+            <p className="text-xs font-sans text-ink-light uppercase font-bold tracking-widest mb-1">{t('spentFromKas')}</p>
+            <p className="font-display font-bold text-xl lg:text-2xl text-ink">{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(kasSpentFromPool)}</p>
           </div>
+        </div>
+
+        <div className={cn("p-4 rounded-2xl", kasRemaining < 0 ? "bg-pastel-pink/10 border border-pastel-pink/30" : "bg-pastel-mint/20")}>
+          <p className="text-xs font-sans text-ink-light uppercase font-bold tracking-widest mb-1">{t('remainingKas')}</p>
+          <p className={cn("font-display font-bold text-xl lg:text-2xl", kasRemaining < 0 ? "text-pastel-pink" : "text-ink")}>
+            {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(kasRemaining)}
+          </p>
         </div>
 
         {owedList.length > 0 && (
@@ -140,10 +150,13 @@ export default function DashboardTab({ trip, updateTrip, currentUser }: Props) {
                 key={member.id}
                 member={member}
                 savingTarget={trip.savingTargetPerMember}
+                effectiveKasBalance={member.totalContributed - (kasDeductions[member.id] || 0)}
                 isCurrentUser={member.id === currentUser?.id}
                 onDeposit={(m) => setSelectedMember(m)}
                 youLabel={t('you')}
                 depositLabel={t('deposit')}
+                kasBalanceLabel={t('kasBalance')}
+                kasExceededLabel={t('kasExceeded')}
               />
             ))}
           </ul>

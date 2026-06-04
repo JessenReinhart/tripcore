@@ -1,7 +1,8 @@
 import { Trip, Member, Expense } from "../../types";
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Receipt } from "lucide-react";
+import { Plus, Receipt, X } from "lucide-react";
+import { cn } from "../../lib/utils";
 import { triggerDopamine } from "../../lib/confetti";
 import { useLanguage } from "../../lib/i18n";
 import ExpenseForm from "./ExpenseForm";
@@ -50,6 +51,10 @@ export default function ExpensesTab({ trip, updateTrip, currentUser }: Props) {
     updateTrip({ ...trip, expenses: [newExpense, ...trip.expenses] });
     triggerDopamine();
     setIsAdding(false);
+  };
+
+  const handleDeleteExpense = (expenseId: string) => {
+    updateTrip({ ...trip, expenses: trip.expenses.filter(e => e.id !== expenseId) });
   };
 
   const settlements = calculateSettlements(trip);
@@ -108,12 +113,26 @@ export default function ExpensesTab({ trip, updateTrip, currentUser }: Props) {
                     <Icon className="w-6 h-6 text-pastel-pink" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-sans font-bold text-ink truncate">{exp.title}</p>
-                    <p className="text-xs text-ink-light">{t('paidByText')} {getMemberName(trip, exp.paidBy, t("unknownMember"))}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-sans font-bold text-ink truncate">{exp.title}</p>
+                      <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0", exp.paidFromKas ? "bg-pastel-mint/30 text-pastel-mint mix-blend-multiply" : "bg-pastel-pink/20 text-pastel-pink")}>
+                        {exp.paidFromKas ? t('kasBadge') : t('personalBadge')}
+                      </span>
+                    </div>
+                    <p className="text-xs text-ink-light">{exp.paidFromKas ? t('swipedBy') : t('paidByText')} {getMemberName(trip, exp.paidBy, t("unknownMember"))}</p>
                   </div>
-                  <div className="text-right shrink-0">
+                  <div className="text-right shrink-0 flex flex-col items-end gap-1">
                     <p className="font-display font-bold text-ink">{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(exp.amount)}</p>
-                    <p className="text-[10px] text-ink-light font-bold">{t('splitText')} {exp.splitBetween.length}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[10px] text-ink-light font-bold">{t('splitText')} {exp.splitBetween.length}</p>
+                      <button
+                        onClick={() => handleDeleteExpense(exp.id)}
+                        className="text-ink-light/40 hover:text-pastel-pink transition-colors leading-none"
+                        title={t('deleteExpense')}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               );
