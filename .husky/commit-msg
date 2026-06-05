@@ -1,0 +1,23 @@
+#!/usr/bin/env sh
+
+# Validate conventional commits format: type(scope?): description
+# Allowed types: feat, fix, chore, refactor, docs, style, test, ci, perf, build
+
+commit_msg_file="$1"
+commit_msg=$(head -n 1 "$commit_msg_file")
+
+pattern="^(feat|fix|chore|refactor|docs|style|test|ci|perf|build)(\(.+\))?(!)?: .+"
+
+if ! echo "$commit_msg" | grep -qE "$pattern"; then
+  echo "❌ Invalid commit message format."
+  echo ""
+  echo "  Expected: <type>(<scope>): <description>"
+  echo "  Types:    feat | fix | chore | refactor | docs | style | test | ci | perf | build"
+  echo ""
+  echo "  Examples:"
+  echo "    feat(itinerary): add edit mode for activities"
+  echo "    fix(auth): ensure memberUids includes current user"
+  echo "    chore: add husky pre-commit hook"
+  echo ""
+  exit 1
+fi

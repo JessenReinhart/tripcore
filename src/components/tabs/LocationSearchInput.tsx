@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from "react";
-import { searchPlaces, type PlaceSuggestion } from "../../lib/geocode";
+import type { PlaceSuggestion } from "../../lib/geocode";
+import { usePlaceSearch } from "./usePlaceSearch";
+import PlaceDropdown from "./PlaceDropdown";
 
 type Props = {
   onSelect: (place: PlaceSuggestion) => void;
@@ -8,55 +9,20 @@ type Props = {
 };
 
 export default function LocationSearchInput({ onSelect, initialLocation, t }: Props) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<PlaceSuggestion[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
-  const [selectedDisplayName, setSelectedDisplayName] = useState(initialLocation ?? "");
-  const containerRef = useRef<HTMLDivElement>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const {
+    query, setQuery,
+    results,
+    isOpen,
+    isSearching,
+    selectedDisplayName,
+    containerRef,
+    handleSelect,
+    clearSelection,
+  } = usePlaceSearch(initialLocation);
 
-  useEffect(() => {
-    if (query.length < 2) {
-      setResults([]);
-      setIsOpen(false);
-      return;
-    }
-
-    setIsSearching(true);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(async () => {
-      const places = await searchPlaces(query);
-      setResults(places);
-      setIsOpen(places.length > 0);
-      setIsSearching(false);
-    }, 300);
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [query]);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleSelect = (place: PlaceSuggestion) => {
-    setSelectedDisplayName(place.displayName);
-    setQuery("");
-    setIsOpen(false);
-    setResults([]);
+  const handlePlaceSelect = (place: PlaceSuggestion) => {
+    handleSelect(place);
     onSelect(place);
-  };
-
-  const clearSelection = () => {
-    setSelectedDisplayName("");
   };
 
   return (
@@ -82,25 +48,14 @@ export default function LocationSearchInput({ onSelect, initialLocation, t }: Pr
               <div className="w-4 h-4 border-2 border-pastel-pink/30 border-t-pastel-pink rounded-full animate-spin" />
             </div>
           )}
-          {isOpen && results.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border-2 border-pastel-cream overflow-hidden z-50 max-h-48 overflow-y-auto">
-              {results.map((place, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => handleSelect(place)}
-                  className="w-full text-left px-4 py-3 hover:bg-pastel-cream transition-colors border-b border-pastel-cream last:border-b-0"
-                >
-                  <span className="text-sm text-ink font-sans">{place.displayName}</span>
-                </button>
-              ))}
-            </div>
-          )}
-          {isOpen && results.length === 0 && !isSearching && query.length >= 2 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border-2 border-pastel-cream p-4 text-center z-50">
-              <span className="text-xs text-ink-light font-sans">{t('noLocationResults')}</span>
-            </div>
-          )}
+          <PlaceDropdown
+            results={results}
+            isOpen={isOpen}
+            isSearching={isSearching}
+            queryLength={query.length}
+            onSelect={handlePlaceSelect}
+            noResultsText={t('noLocationResults')}
+          />
         </div>
       )}
     </div>
