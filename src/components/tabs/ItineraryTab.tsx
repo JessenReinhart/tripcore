@@ -1,5 +1,5 @@
 import { Trip, ItineraryDay, Activity } from "../../types";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Clock, Calendar, Trash2, ChevronDown, Navigation, Pencil, Undo2 } from "lucide-react";
 import { triggerDopamine } from "../../lib/confetti";
@@ -216,8 +216,27 @@ function DayContent({ day, canDelete, onDateChange, onDelete, onAddActivity, onE
 }) {
   const [isAdding, setIsAdding] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const [lineHeight, setLineHeight] = useState(0);
   const dayLabel = day.date ? formatDateFull(day.date, lang) : day.dateLabel;
   const shortLabel = day.date ? formatDateShort(day.date, lang) : day.dateLabel;
+
+  const recalcLine = useCallback(() => {
+    if (!listRef.current) return;
+    const children = listRef.current.children;
+    if (children.length < 1) { setLineHeight(0); return; }
+    const lastChild = children[children.length - 1] as HTMLElement;
+    // Dot center is at top-4 (16px) + half of 22px = 27px from card top
+    setLineHeight(lastChild.offsetTop + 27);
+  }, []);
+
+  useEffect(() => {
+    recalcLine();
+    if (!listRef.current) return;
+    const observer = new ResizeObserver(recalcLine);
+    observer.observe(listRef.current);
+    return () => observer.disconnect();
+  }, [day.activities, recalcLine]);
 
   const handleEditSave = (time: string, title: string, location?: string, lat?: number, lng?: number) => {
     if (!editingActivity) return;
@@ -236,8 +255,8 @@ function DayContent({ day, canDelete, onDateChange, onDelete, onAddActivity, onE
         </div>
       ) : (
         <div className="relative pl-7 sm:pl-10 mt-2">
-          <div className="absolute left-[9px] sm:left-[13px] top-6 bottom-4 w-1 bg-pastel-cream rounded-full" />
-          <div className="flex flex-col gap-5">
+          <div className="absolute left-[7px] top-[27px] w-[1.5px] rounded-full" style={{ height: Math.max(0, lineHeight - 27), backgroundColor: '#e9e9e9' }} />
+          <div ref={listRef} className="flex flex-col gap-5">
             <AnimatePresence>
               {day.activities.map(act => <ActivityCard key={act.id} act={act} onEdit={() => setEditingActivity(act)} onRemove={() => onRemoveActivity(act.id)} t={t} />)}
             </AnimatePresence>
