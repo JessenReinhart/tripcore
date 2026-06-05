@@ -124,7 +124,7 @@ function DayHeader({ day, canDelete, onDateChange, onDelete, t, lang }: {
   );
 }
 
-function ActivityCard({ act, onRemove, t }: { act: Activity; onRemove: () => void; t: TFn }) {
+function ActivityCard({ act, onEdit, onRemove, t }: { act: Activity; onEdit: () => void; onRemove: () => void; t: TFn }) {
   const hasDirections = act.lat !== undefined && act.lng !== undefined;
 
   return (
@@ -135,9 +135,14 @@ function ActivityCard({ act, onRemove, t }: { act: Activity; onRemove: () => voi
           <div className="flex items-center gap-1.5 text-pastel-pink font-bold text-xs font-mono uppercase tracking-wider">
             <Clock className="w-3.5 h-3.5" />{act.time}
           </div>
-          <button onClick={onRemove} className="text-ink-light opacity-50 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:text-pastel-pink p-1 bg-pastel-cream rounded-full">
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-1 opacity-50 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+            <button onClick={onEdit} className="text-ink-light hover:text-pastel-pink p-1 bg-pastel-cream rounded-full">
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+            <button onClick={onRemove} className="text-ink-light hover:text-pastel-pink p-1 bg-pastel-cream rounded-full">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
         <p className="font-sans font-bold text-ink text-[15px] sm:text-base break-words pr-2">{act.title}</p>
         {act.location && (
@@ -166,11 +171,21 @@ function MapToggle({ activities, dayLabel, t }: { activities: Activity[]; dayLab
         <span className="font-sans font-bold text-xs text-ink-light">{t('mapStops', { count })}</span>
         <ChevronDown className={`w-4 h-4 text-ink-light transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
-      {open && (
-        <div className="mt-2">
-          <ItineraryMapView activities={activities} dayLabel={dayLabel} />
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <div className="pt-2">
+              <ItineraryMapView activities={activities} dayLabel={dayLabel} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -193,14 +208,22 @@ function DaySelector({ days, activeId, onSelect, onAdd, lang }: {
   );
 }
 
-function DayContent({ day, canDelete, onDateChange, onDelete, onAddActivity, onRemoveActivity, t, lang }: {
+function DayContent({ day, canDelete, onDateChange, onDelete, onAddActivity, onEditActivity, onRemoveActivity, t, lang }: {
   day: ItineraryDay; canDelete: boolean; onDateChange: (d: string) => void; onDelete: () => void;
   onAddActivity: (time: string, title: string, location?: string, lat?: number, lng?: number) => void;
+  onEditActivity: (activityId: string, time: string, title: string, location?: string, lat?: number, lng?: number) => void;
   onRemoveActivity: (id: string) => void; t: TFn; lang: string;
 }) {
   const [isAdding, setIsAdding] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const dayLabel = day.date ? formatDateFull(day.date, lang) : day.dateLabel;
   const shortLabel = day.date ? formatDateShort(day.date, lang) : day.dateLabel;
+
+  const handleEditSave = (time: string, title: string, location?: string, lat?: number, lng?: number) => {
+    if (!editingActivity) return;
+    onEditActivity(editingActivity.id, time, title, location, lat, lng);
+    setEditingActivity(null);
+  };
 
   return (
     <div className="flex flex-col w-full">
@@ -216,12 +239,23 @@ function DayContent({ day, canDelete, onDateChange, onDelete, onAddActivity, onR
           <div className="absolute left-[9px] sm:left-[13px] top-6 bottom-4 w-1 bg-pastel-cream rounded-full" />
           <div className="flex flex-col gap-5">
             <AnimatePresence>
-              {day.activities.map(act => <ActivityCard key={act.id} act={act} onRemove={() => onRemoveActivity(act.id)} t={t} />)}
+              {day.activities.map(act => <ActivityCard key={act.id} act={act} onEdit={() => setEditingActivity(act)} onRemove={() => onRemoveActivity(act.id)} t={t} />)}
             </AnimatePresence>
           </div>
         </div>
       )}
-      {isAdding ? (
+      {editingActivity ? (
+        <ActivityForm
+          onSave={handleEditSave}
+          onCancel={() => setEditingActivity(null)}
+          t={t}
+          initialTime={editingActivity.time}
+          initialTitle={editingActivity.title}
+          initialLocation={editingActivity.location}
+          initialLat={editingActivity.lat}
+          initialLng={editingActivity.lng}
+        />
+      ) : isAdding ? (
         <ActivityForm onSave={(time, title, loc, lat, lng) => { onAddActivity(time, title, loc, lat, lng); setIsAdding(false); }} onCancel={() => setIsAdding(false)} t={t} />
       ) : (
         <button onClick={() => setIsAdding(true)} className="mt-4 bg-pastel-cream border-2 border-dashed border-ink-light/20 text-ink-light font-bold py-4 rounded-3xl flex items-center justify-center gap-2 font-sans hover:bg-pastel-yellow/30 transition-colors w-full"><Plus className="w-5 h-5" /> {t('addPlan')}</button>
@@ -261,15 +295,34 @@ export default function ItineraryTab({ trip, updateTrip }: { trip: Trip; updateT
     updateTrip({ ...trip, itinerary: trip.itinerary.map(day => day.id === activeDayId ? { ...day, activities: day.activities.filter(a => a.id !== activityId) } : day) });
   };
 
+  const editActivity = (activityId: string, time: string, title: string, location?: string, lat?: number, lng?: number) => {
+    dismissUndo();
+    if (!activeDayId) return;
+    updateTrip({ ...trip, itinerary: trip.itinerary.map(day => day.id === activeDayId ? {
+      ...day,
+      activities: sortByTime(day.activities.map(a => a.id === activityId ? { ...a, time, title, location, lat, lng } : a))
+    } : day) });
+  };
+
   const activeDay = trip.itinerary.find(d => d.id === activeDayId);
 
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-500 pb-12">
       <DaySelector days={trip.itinerary} activeId={activeDayId} onSelect={setActiveDayId} onAdd={handleAddDay} lang={lang} />
-      {activeDay && (
-        <DayContent day={activeDay} canDelete={trip.itinerary.length > 1} onDateChange={handleDateChange}
-          onDelete={() => scheduleDelete(activeDay.id)} onAddActivity={handleAddActivity} onRemoveActivity={removeActivity} t={t} lang={lang} />
-      )}
+      <AnimatePresence mode="wait">
+        {activeDay && (
+          <motion.div
+            key={activeDay.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+          >
+            <DayContent day={activeDay} canDelete={trip.itinerary.length > 1} onDateChange={handleDateChange}
+              onDelete={() => scheduleDelete(activeDay.id)} onAddActivity={handleAddActivity} onEditActivity={editActivity} onRemoveActivity={removeActivity} t={t} lang={lang} />
+          </motion.div>
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {undoDay && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-ink text-white px-5 py-3 rounded-2xl shadow-lg flex items-center gap-3 font-sans text-sm">

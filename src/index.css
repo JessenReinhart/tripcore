@@ -35,3 +35,13 @@ body {
 .leaflet-bottom {
   z-index: 2;
 }
+
+.leaflet-tile-pane {
+  filter: saturate(0.6) sepia(0.15) hue-rotate(340deg) brightness(1.05);
+}
+
+@keyframes marker-pop {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}

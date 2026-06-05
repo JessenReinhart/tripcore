@@ -19,9 +19,10 @@ function createNumberedIcon(num: number): L.DivIcon {
       display:flex;align-items:center;justify-content:center;
       font-weight:700;font-size:13px;color:#fff;
       background:#ffb6b9;
-      box-shadow:0 2px 8px rgba(0,0,0,0.3);
+      box-shadow:0 2px 10px rgba(255,182,185,0.6);
       border:2px solid #fff;
       font-family:'Nunito',sans-serif;
+      animation:marker-pop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
     ">${num}</div>`,
     iconSize: [28, 28],
     iconAnchor: [14, 14],
@@ -70,7 +71,9 @@ export default function ItineraryMapView({ activities, dayLabel }: Props) {
         attributionControl={false}
       >
         <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>'
+          subdomains="abcd"
           maxZoom={19}
         />
         <MapCenterController activities={located} />

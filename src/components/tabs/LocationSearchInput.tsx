@@ -3,15 +3,16 @@ import { searchPlaces, type PlaceSuggestion } from "../../lib/geocode";
 
 type Props = {
   onSelect: (place: PlaceSuggestion) => void;
+  initialLocation?: string;
   t: (key: string) => string;
 };
 
-export default function LocationSearchInput({ onSelect, t }: Props) {
+export default function LocationSearchInput({ onSelect, initialLocation, t }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlaceSuggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [selectedDisplayName, setSelectedDisplayName] = useState("");
+  const [selectedDisplayName, setSelectedDisplayName] = useState(initialLocation ?? "");
   const containerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 

@@ -76,8 +76,11 @@ export function subscribeToTrip(
 
 /** Write the full trip document to Firestore. Derives memberUids for security rules. */
 export async function saveTrip(tripId: string, trip: Trip): Promise<void> {
-  await ensureAuth();
+  const uid = await ensureAuth();
   const memberUids = trip.members.map((m) => m.firebaseUid).filter(Boolean) as string[];
+  if (uid && !memberUids.includes(uid)) {
+    memberUids.push(uid);
+  }
   const tripRef = doc(db, 'trips', tripId);
   await setDoc(tripRef, { ...trip, memberUids }, { merge: true });
 }
