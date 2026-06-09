@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, useCallback, type FormEvent } from "react";
 import { Sparkles, Map, Link, Loader2, LogIn } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useLanguage } from "../lib/i18n";
@@ -6,6 +6,7 @@ import { cn } from "../lib/utils";
 import { useTripNavigation } from "../hooks/useTripNavigation";
 import LanguageToggle from "../components/LanguageToggle";
 import ModeSwitch from "../components/ModeSwitch";
+import LogoSplash from "../components/LogoSplash";
 
 type Mode = "create" | "join";
 
@@ -13,6 +14,11 @@ export default function LandingPage() {
   const { t } = useLanguage();
   const { slug, setSlug, error, loading, handleCreateTrip, handleJoinTrip } = useTripNavigation(t);
   const [mode, setMode] = useState<Mode>("create");
+  const [splashDone, setSplashDone] = useState(false);
+
+  const finishSplash = useCallback(() => {
+    setSplashDone(true);
+  }, []);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -26,11 +32,13 @@ export default function LandingPage() {
 
   return (
     <div className="flex flex-col items-center justify-center flex-1 w-full p-6 text-center max-w-md mx-auto relative">
-      <LanguageToggle className="absolute top-6 right-6" />
+      <LanguageToggle className="absolute top-6 right-6 z-10" />
+
+      <LogoSplash isDone={splashDone} onEnd={finishSplash} />
 
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
+        animate={splashDone ? { scale: 1, opacity: 1 } : { scale: 0.8, opacity: 0 }}
         transition={{ type: "spring", stiffness: 200, damping: 15 }}
         className="bg-white p-8 rounded-3xl shadow-xl shadow-pastel-pink/10 border-4 border-pastel-cream w-full"
       >
